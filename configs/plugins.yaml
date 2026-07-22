@@ -1,0 +1,15 @@
+# Universal-CV-Adapter fusion plugin configuration scaffold.
+# TODO: Tune plugin order, priorities, and runtime dependencies.
+plugins:
+  - name: triangulation
+    class: fusion.plugins.TriangulationPlugin
+    stage: geometry
+    enabled: true
+  - name: temporal_fusion
+    class: fusion.plugins.TemporalFusionPlugin
+    stage: temporal
+    enabled: true
+  - name: scene_graph
+    class: fusion.plugins.SceneGraphPlugin
+    stage: semantic
+    enabled: true
