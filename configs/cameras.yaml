@@ -1,0 +1,15 @@
+# Universal-CV-Adapter camera/source configuration scaffold.
+# TODO: Replace sample URIs/device IDs with secure runtime sources.
+sources:
+  - id: cam_front_rgb
+    type: rgb_camera
+    transport: usb
+    calibration: configs/calibration/front_rgb.yaml
+  - id: cam_left_depth
+    type: depth_camera
+    transport: rtsp
+    uri: rtsp://example.local/left_depth
+  - id: imu_base
+    type: imu
+    transport: ros2
+    topic: /imu/data

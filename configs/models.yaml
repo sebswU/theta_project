@@ -1,0 +1,18 @@
+# Universal-CV-Adapter model configuration scaffold.
+# TODO: Replace placeholder paths/checkpoints with deployment values.
+models:
+  - name: rtmpose
+    adapter: adapters.models.cvpr_adapters.RTMPoseAdapter
+    enabled: true
+    device: cuda
+    precision: fp16
+  - name: vitpose
+    adapter: adapters.models.cvpr_adapters.ViTPoseAdapter
+    enabled: true
+    device: cuda
+    precision: fp16
+  - name: sam2
+    adapter: adapters.models.cvpr_adapters.SAM2Adapter
+    enabled: false
+    device: cuda
+    precision: fp16

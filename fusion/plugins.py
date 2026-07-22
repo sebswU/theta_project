@@ -1,0 +1,71 @@
+"""Fusion plugin scaffold definitions.
+
+All fusion plugins must inherit from `FusionPlugin` and implement required
+lifecycle and processing contracts.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from fusion.base import FusionPlugin
+
+
+class _BaseScaffoldFusionPlugin(FusionPlugin):
+    """Shared placeholder implementation for scaffold-only fusion plugins."""
+
+    def initialize(self, config: dict[str, Any]) -> None:
+        """Initialize plugin.
+
+        TODO: Implement plugin-specific initialization.
+        """
+        raise NotImplementedError("TODO: implement initialize()")
+
+    def process(self, inputs: dict[str, Any]) -> dict[str, Any]:
+        """Process fusion inputs.
+
+        TODO: Implement plugin-specific fusion logic.
+        """
+        raise NotImplementedError("TODO: implement process()")
+
+    def validate(self, inputs: dict[str, Any]) -> bool:
+        """Validate plugin inputs.
+
+        TODO: Implement plugin input validation.
+        """
+        raise NotImplementedError("TODO: implement validate()")
+
+    def output_type(self) -> str:
+        """Return plugin output semantic type.
+
+        TODO: Implement output type declaration.
+        """
+        raise NotImplementedError("TODO: implement output_type()")
+
+
+class TriangulationPlugin(_BaseScaffoldFusionPlugin):
+    """Triangulation fusion plugin scaffold."""
+
+
+class BundleAdjustmentPlugin(_BaseScaffoldFusionPlugin):
+    """Bundle adjustment fusion plugin scaffold."""
+
+
+class CrossViewMatchingPlugin(_BaseScaffoldFusionPlugin):
+    """Cross-view matching fusion plugin scaffold."""
+
+
+class TemporalFusionPlugin(_BaseScaffoldFusionPlugin):
+    """Temporal fusion plugin scaffold."""
+
+
+class VolumetricFusionPlugin(_BaseScaffoldFusionPlugin):
+    """Volumetric fusion plugin scaffold."""
+
+
+class NeuralFusionPlugin(_BaseScaffoldFusionPlugin):
+    """Neural fusion plugin scaffold."""
+
+
+class SceneGraphPlugin(_BaseScaffoldFusionPlugin):
+    """Scene graph fusion plugin scaffold."""

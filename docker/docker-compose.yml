@@ -1,0 +1,10 @@
+# TODO: Add production services (message bus, telemetry, and storage).
+services:
+  universal-cv-adapter:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    working_dir: /app
+    command: ["python", "-m", "pytest", "-q"]
+    volumes:
+      - ../:/app

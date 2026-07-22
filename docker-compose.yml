@@ -1,0 +1,7 @@
+# TODO: Expand compose stack for production orchestration dependencies.
+services:
+  universal-cv-adapter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "-m", "pytest", "-q"]
