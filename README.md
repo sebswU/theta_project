@@ -2,7 +2,7 @@
 
 Universal-CV-Adapter is a production-grade scaffold for integrating heterogeneous computer vision
 systems (SkellyCam, ROS2, GStreamer, CVPR repositories, and future research models) through a
-thin adapter architecture.
+thin adapter architecture. [See system architecture blueprint here.](https://drive.google.com/file/d/1xV0bIm831s-ngtiAbyosJEgINP_Uj0Ji/view?usp=drive_link)
 
 ## Repository Intent
 
