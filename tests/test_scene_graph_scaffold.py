@@ -1,13 +1,16 @@
 """Tests for scene graph structural contracts."""
 
-from architecture.scene_graph import CameraNode
-from architecture.scene_graph import HumanNode
-from architecture.scene_graph import MeshNode
-from architecture.scene_graph import ObjectNode
-from architecture.scene_graph import RelationshipEdge
-from architecture.scene_graph import Scene
-from architecture.scene_graph import SensorNode
 from importlib import import_module
+
+from architecture.scene_graph import (
+    CameraNode,
+    HumanNode,
+    MeshNode,
+    ObjectNode,
+    RelationshipEdge,
+    Scene,
+    SensorNode,
+)
 
 
 def test_scene_can_be_constructed_with_defaults() -> None:
