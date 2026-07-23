@@ -10,7 +10,17 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
 
+from architecture.core_interfaces import PipelinePlanner, WorkflowBuilder
 from schemas.capabilities import SensorCapabilityProfile
+
+__all__ = [
+    "ExecutionNode",
+    "ExecutionGraph",
+    "PipelinePlanner",
+    "PipelineBuilder",
+    "CapabilityMatcher",
+    "WorkflowBuilder",
+]
 
 
 @dataclass(slots=True)
@@ -28,17 +38,6 @@ class ExecutionGraph:
 
     nodes: list[ExecutionNode] = field(default_factory=list)
     edges: list[tuple[str, str]] = field(default_factory=list)
-
-
-class PipelinePlanner(ABC):
-    """Selects models/fusion/output pipeline from capabilities."""
-
-    @abstractmethod
-    def plan(self, capabilities: list[SensorCapabilityProfile]) -> dict[str, Any]:
-        """Create a model and fusion selection plan.
-
-        TODO: Implement planning policy.
-        """
 
 
 class PipelineBuilder(ABC):
@@ -64,15 +63,4 @@ class CapabilityMatcher(ABC):
         """Check if capabilities satisfy candidate requirements.
 
         TODO: Implement requirement matching and scoring.
-        """
-
-
-class WorkflowBuilder(ABC):
-    """Creates deployable workflow artifacts from an execution graph."""
-
-    @abstractmethod
-    def build_workflow(self, graph: ExecutionGraph) -> dict[str, Any]:
-        """Build workflow descriptor for execution backends.
-
-        TODO: Implement backend-specific workflow generation.
         """
