@@ -5,15 +5,17 @@ from importlib import import_module
 import pytest
 from pydantic import ValidationError
 
-from schemas import CameraInfo
-from schemas import Frame
-from schemas import PipelinePlan
-from schemas import SceneGraph
-from schemas import SceneObject
-from schemas import SceneRelationship
-from schemas import SensorCapabilityProfile
-from schemas import SensorType
-from schemas import SourceDescriptor
+from schemas import (
+    CameraInfo,
+    Frame,
+    PipelinePlan,
+    SceneGraph,
+    SceneObject,
+    SceneRelationship,
+    SensorCapabilityProfile,
+    SensorType,
+    SourceDescriptor,
+)
 
 
 def test_schema_objects_validate_required_fields() -> None:

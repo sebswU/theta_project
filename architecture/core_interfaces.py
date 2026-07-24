@@ -18,11 +18,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 
 from schemas.capabilities import SensorCapabilityProfile
-from schemas.models import Frame
-from schemas.models import PipelinePlan
-from schemas.models import SceneGraph
-from schemas.models import SourceDescriptor
-from schemas.models import WorkflowGraph
+from schemas.models import Frame, PipelinePlan, SceneGraph, SourceDescriptor, WorkflowGraph
 
 
 class DiscoveryProvider(ABC):

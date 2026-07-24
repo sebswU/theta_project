@@ -12,9 +12,7 @@ from typing import Any
 
 from architecture.core_interfaces import PipelinePlanner, WorkflowBuilder
 from schemas.capabilities import SensorCapabilityProfile
-from schemas.models import ModelRequirements
-from schemas.models import PipelinePlan
-from schemas.models import WorkflowGraph
+from schemas.models import ModelRequirements, PipelinePlan, WorkflowGraph
 
 __all__ = [
     "ExecutionNode",

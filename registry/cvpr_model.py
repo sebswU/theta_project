@@ -12,11 +12,13 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from schemas.models import InferenceRequest
-from schemas.models import InferenceResponse
-from schemas.models import ModelCapabilities
-from schemas.models import ModelRequirements
-from schemas.models import OutputSchema
+from schemas.models import (
+    InferenceRequest,
+    InferenceResponse,
+    ModelCapabilities,
+    ModelRequirements,
+    OutputSchema,
+)
 
 
 class CVPRModel(ABC):

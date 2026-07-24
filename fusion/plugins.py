@@ -7,9 +7,7 @@ lifecycle and processing contracts.
 from __future__ import annotations
 
 from fusion.base import FusionPlugin
-from schemas.models import FusionConfiguration
-from schemas.models import FusionRequest
-from schemas.models import FusionResponse
+from schemas.models import FusionConfiguration, FusionRequest, FusionResponse
 
 
 class _BaseScaffoldFusionPlugin(FusionPlugin):

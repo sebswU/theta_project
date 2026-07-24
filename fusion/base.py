@@ -8,9 +8,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from schemas.models import FusionConfiguration
-from schemas.models import FusionRequest
-from schemas.models import FusionResponse
+from schemas.models import FusionConfiguration, FusionRequest, FusionResponse
 
 
 class FusionPlugin(ABC):
