@@ -6,10 +6,9 @@ No advanced dependency resolution implementation is included.
 
 from __future__ import annotations
 
-from typing import Any
-
 from fusion.base import FusionPlugin
 from registry.cvpr_model import CVPRModel
+from schemas.models import RegistryResolution
 
 
 class ModelRegistry:
@@ -39,7 +38,7 @@ class ModelRegistry:
         """
         return name in self._models
 
-    def resolve_dependencies(self, name: str) -> dict[str, Any]:
+    def resolve_dependencies(self, name: str) -> RegistryResolution:
         """Resolve runtime dependency metadata for a model.
 
         TODO: Integrate dependency graph and environment constraints.
@@ -74,7 +73,7 @@ class PluginRegistry:
         """
         return name in self._plugins
 
-    def resolve_dependencies(self, name: str) -> dict[str, Any]:
+    def resolve_dependencies(self, name: str) -> RegistryResolution:
         """Resolve runtime dependency metadata for a plugin.
 
         TODO: Integrate dependency graph and environment constraints.

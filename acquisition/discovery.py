@@ -7,14 +7,15 @@ must be implemented by deployment-specific providers.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+
+from schemas.models import SourceDescriptor
 
 
 class BaseDiscoveryProvider(ABC):
     """Base interface for all discovery providers."""
 
     @abstractmethod
-    def discover(self) -> list[dict[str, Any]]:
+    def discover(self) -> list[SourceDescriptor]:
         """Discover source endpoints and metadata.
 
         TODO: Implement provider-specific discovery behavior.

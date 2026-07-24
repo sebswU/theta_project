@@ -6,29 +6,30 @@ lifecycle and processing contracts.
 
 from __future__ import annotations
 
-from typing import Any
-
 from fusion.base import FusionPlugin
+from schemas.models import FusionConfiguration
+from schemas.models import FusionRequest
+from schemas.models import FusionResponse
 
 
 class _BaseScaffoldFusionPlugin(FusionPlugin):
     """Shared placeholder implementation for scaffold-only fusion plugins."""
 
-    def initialize(self, config: dict[str, Any]) -> None:
+    def initialize(self, config: FusionConfiguration) -> None:
         """Initialize plugin.
 
         TODO: Implement plugin-specific initialization.
         """
         raise NotImplementedError("TODO: implement initialize()")
 
-    def process(self, inputs: dict[str, Any]) -> dict[str, Any]:
+    def process(self, inputs: FusionRequest) -> FusionResponse:
         """Process fusion inputs.
 
         TODO: Implement plugin-specific fusion logic.
         """
         raise NotImplementedError("TODO: implement process()")
 
-    def validate(self, inputs: dict[str, Any]) -> bool:
+    def validate(self, inputs: FusionRequest) -> bool:
         """Validate plugin inputs.
 
         TODO: Implement plugin input validation.

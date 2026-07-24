@@ -12,6 +12,9 @@ from typing import Any
 
 from architecture.core_interfaces import PipelinePlanner, WorkflowBuilder
 from schemas.capabilities import SensorCapabilityProfile
+from schemas.models import ModelRequirements
+from schemas.models import PipelinePlan
+from schemas.models import WorkflowGraph
 
 __all__ = [
     "ExecutionNode",
@@ -44,7 +47,7 @@ class PipelineBuilder(ABC):
     """Builds execution graphs from planner output."""
 
     @abstractmethod
-    def build(self, plan: dict[str, Any]) -> ExecutionGraph:
+    def build(self, plan: PipelinePlan) -> WorkflowGraph:
         """Compile execution graph from plan.
 
         TODO: Implement execution graph builder.
@@ -58,7 +61,7 @@ class CapabilityMatcher(ABC):
     def match(
         self,
         capabilities: list[SensorCapabilityProfile],
-        candidate_requirements: dict[str, Any],
+        candidate_requirements: ModelRequirements,
     ) -> bool:
         """Check if capabilities satisfy candidate requirements.
 

@@ -16,17 +16,20 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from typing import Any
 
 from schemas.capabilities import SensorCapabilityProfile
-from schemas.models import Frame, SceneGraph
+from schemas.models import Frame
+from schemas.models import PipelinePlan
+from schemas.models import SceneGraph
+from schemas.models import SourceDescriptor
+from schemas.models import WorkflowGraph
 
 
 class DiscoveryProvider(ABC):
     """Discovers available data sources (hardware, streams, datasets, middleware)."""
 
     @abstractmethod
-    def discover(self) -> list[dict[str, Any]]:
+    def discover(self) -> list[SourceDescriptor]:
         """Discover source descriptors.
 
         TODO: Implement concrete environment-specific discovery behavior.
@@ -37,7 +40,7 @@ class CapabilityDetector(ABC):
     """Detects typed capabilities from discovered source descriptors."""
 
     @abstractmethod
-    def detect(self, source_descriptor: dict[str, Any]) -> SensorCapabilityProfile:
+    def detect(self, source_descriptor: SourceDescriptor) -> SensorCapabilityProfile:
         """Return normalized capability profile for a source.
 
         TODO: Implement capability extraction and validation.
@@ -48,7 +51,7 @@ class PipelinePlanner(ABC):
     """Plans model and fusion strategy from capabilities and target outputs."""
 
     @abstractmethod
-    def plan(self, capabilities: list[SensorCapabilityProfile]) -> dict[str, Any]:
+    def plan(self, capabilities: list[SensorCapabilityProfile]) -> PipelinePlan:
         """Build a pipeline plan from capability profiles.
 
         TODO: Implement planning policy and scoring.
@@ -59,7 +62,7 @@ class WorkflowBuilder(ABC):
     """Builds executable workflow representations from a planning output."""
 
     @abstractmethod
-    def build(self, plan: dict[str, Any]) -> dict[str, Any]:
+    def build(self, plan: PipelinePlan) -> WorkflowGraph:
         """Build workflow graph/specification from plan.
 
         TODO: Implement workflow graph compilation.

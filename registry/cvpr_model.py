@@ -11,7 +11,12 @@ TODO:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+
+from schemas.models import InferenceRequest
+from schemas.models import InferenceResponse
+from schemas.models import ModelCapabilities
+from schemas.models import ModelRequirements
+from schemas.models import OutputSchema
 
 
 class CVPRModel(ABC):
@@ -25,35 +30,35 @@ class CVPRModel(ABC):
         """
 
     @abstractmethod
-    def infer(self, inputs: dict[str, Any]) -> dict[str, Any]:
+    def infer(self, inputs: InferenceRequest) -> InferenceResponse:
         """Run inference using standardized input payload.
 
         TODO: Implement model inference entrypoint.
         """
 
     @abstractmethod
-    def validate_inputs(self, inputs: dict[str, Any]) -> bool:
+    def validate_inputs(self, inputs: InferenceRequest) -> bool:
         """Validate adapter input payload.
 
         TODO: Implement strict adapter input validation.
         """
 
     @abstractmethod
-    def get_capabilities(self) -> dict[str, Any]:
+    def get_capabilities(self) -> ModelCapabilities:
         """Return capability metadata for planner compatibility.
 
         TODO: Implement model capability reporting.
         """
 
     @abstractmethod
-    def get_requirements(self) -> dict[str, Any]:
+    def get_requirements(self) -> ModelRequirements:
         """Return dependency/runtime requirements.
 
         TODO: Implement requirement reporting.
         """
 
     @abstractmethod
-    def output_schema(self) -> dict[str, Any]:
+    def output_schema(self) -> OutputSchema:
         """Return output schema contract description.
 
         TODO: Implement schema metadata output.

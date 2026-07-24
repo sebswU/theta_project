@@ -7,28 +7,31 @@ volumetric fusion, and neural fusion workflows.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+
+from schemas.models import FusionConfiguration
+from schemas.models import FusionRequest
+from schemas.models import FusionResponse
 
 
 class FusionPlugin(ABC):
     """Base interface all fusion plugins must implement."""
 
     @abstractmethod
-    def initialize(self, config: dict[str, Any]) -> None:
+    def initialize(self, config: FusionConfiguration) -> None:
         """Initialize plugin state and dependencies.
 
         TODO: Implement plugin-specific initialization.
         """
 
     @abstractmethod
-    def process(self, inputs: dict[str, Any]) -> dict[str, Any]:
+    def process(self, inputs: FusionRequest) -> FusionResponse:
         """Process normalized intermediate outputs.
 
         TODO: Implement fusion process execution.
         """
 
     @abstractmethod
-    def validate(self, inputs: dict[str, Any]) -> bool:
+    def validate(self, inputs: FusionRequest) -> bool:
         """Validate plugin input payload.
 
         TODO: Implement fusion input validation.

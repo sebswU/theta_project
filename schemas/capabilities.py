@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class SensorType(StrEnum):
@@ -30,6 +30,8 @@ class SensorType(StrEnum):
 class SensorCapabilityProfile(BaseModel):
     """Normalized capability object used by planners and matchers."""
 
+    model_config = ConfigDict(extra="forbid")
+
     source_id: str = Field(..., description="Unique source identifier")
     sensor_type: SensorType
     supports_rgb: bool = False
@@ -39,3 +41,6 @@ class SensorCapabilityProfile(BaseModel):
     supports_synchronization: bool = False
     supports_calibration: bool = False
     supports_multiview: bool = False
+
+
+__all__ = ["SensorCapabilityProfile", "SensorType"]
