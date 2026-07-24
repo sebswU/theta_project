@@ -48,7 +48,7 @@ def test_schema_objects_validate_required_fields() -> None:
         ),
     ],
 )
-def test_invalid_capability_payloads_fail_fast(payload: dict[str, object], expected_message: str) -> None:
+def test_capability_rejects(payload: dict[str, object], expected_message: str) -> None:
     """Capability payloads should reject malformed or unexpected input immediately."""
     with pytest.raises(ValidationError, match=expected_message):
         SensorCapabilityProfile.model_validate(payload)
