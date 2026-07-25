@@ -82,7 +82,7 @@ class CapabilityMatcher:
 class DefaultCapabilityDetector(CapabilityDetectorContract):
     """Deterministic capability detector from source descriptors."""
 
-    def detect(self, source_descriptor: SourceDescriptor) -> SensorCapabilityProfile:
+    def _detect(self, source_descriptor: SourceDescriptor) -> SensorCapabilityProfile:
         """Map source descriptor type to normalized planner-facing capabilities."""
         sensor_type = source_descriptor.source_type
         return SensorCapabilityProfile(
