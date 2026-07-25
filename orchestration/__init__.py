@@ -1,5 +1,6 @@
 """Orchestration package public exports."""
 
+from .config_runtime import RuntimeAssembly, load_runtime_assembly
 from .planner import (
 	CapabilityMatcher,
 	DefaultCapabilityDetector,
@@ -25,5 +26,7 @@ __all__ = [
 	"PipelineBuilder",
 	"PipelinePlanner",
 	"PlanningConstraints",
+	"RuntimeAssembly",
 	"WorkflowBuilder",
+	"load_runtime_assembly",
 ]

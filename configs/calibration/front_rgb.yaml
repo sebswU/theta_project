@@ -1,0 +1,5 @@
+{
+  "camera_id": "cam_front_rgb",
+  "reference_frame": "rig/front_rgb",
+  "notes": "Scaffold calibration placeholder for declarative config validation."
+}

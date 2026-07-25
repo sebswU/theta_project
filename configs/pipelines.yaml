@@ -1,13 +1,16 @@
-# Universal-CV-Adapter pipeline plans scaffold.
-# TODO: Expand with environment-specific routing and fallback policies.
-pipelines:
-  realtime_multicam:
-    inputs: [rgb_camera, depth_camera, imu]
-    models: [rtmpose, vitpose]
-    fusion: [triangulation, temporal_fusion, scene_graph]
-    outputs: [scene_graph, web_dashboard]
-  offline_dataset:
-    inputs: [dataset]
-    models: [sam2]
-    fusion: [scene_graph]
-    outputs: [mesh_export]
+{
+  "pipelines": {
+    "realtime_multicam": {
+      "inputs": ["rgb_camera", "depth_camera", "imu"],
+      "models": ["rtmpose", "vitpose"],
+      "fusion": ["triangulation", "temporal_fusion", "scene_graph"],
+      "outputs": ["scene_graph", "web_dashboard"]
+    },
+    "offline_dataset": {
+      "inputs": ["dataset"],
+      "models": ["sam2"],
+      "fusion": ["scene_graph"],
+      "outputs": ["mesh_export"]
+    }
+  }
+}

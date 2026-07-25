@@ -42,6 +42,7 @@ include = [
   "adapters*",
   "acquisition*",
   "architecture*",
+  "configs*",
   "fusion*",
   "orchestration*",
   "registry*",
