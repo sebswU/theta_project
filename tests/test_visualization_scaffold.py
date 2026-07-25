@@ -2,7 +2,14 @@
 
 import pytest
 
-from schemas import CameraInfo, SceneGraph, SceneObject, SceneRelationship, SensorType, SourceDescriptor
+from schemas import (
+    CameraInfo,
+    SceneGraph,
+    SceneObject,
+    SceneRelationship,
+    SensorType,
+    SourceDescriptor,
+)
 from visualization import render_scene
 
 
