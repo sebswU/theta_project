@@ -138,7 +138,10 @@ class DeterministicPipelinePlanner(PipelinePlanner):
     def _select_models(self, capabilities: list[SensorCapabilityProfile]) -> list[str]:
         selected: list[str] = []
         for model_name in sorted(self._model_requirements):
-            if self._constraints.allowed_models is not None and model_name not in self._constraints.allowed_models:
+            if (
+                self._constraints.allowed_models is not None
+                and model_name not in self._constraints.allowed_models
+            ):
                 continue
             requirements = self._model_requirements[model_name]
             if self._matcher.match(capabilities, requirements):
@@ -150,7 +153,10 @@ class DeterministicPipelinePlanner(PipelinePlanner):
         available_types = {cap.sensor_type for cap in capabilities}
 
         for plugin_name in sorted(self._plugin_requirements):
-            if self._constraints.allowed_plugins is not None and plugin_name not in self._constraints.allowed_plugins:
+            if (
+                self._constraints.allowed_plugins is not None
+                and plugin_name not in self._constraints.allowed_plugins
+            ):
                 continue
 
             required_sources = self._plugin_requirements[plugin_name].get("required_sources", [])
@@ -264,7 +270,9 @@ class Orchestrator:
         self._planner = planner
         self._workflow_builder = workflow_builder
 
-    def create_workflow(self, sources: list[SourceDescriptor]) -> tuple[PipelinePlan, WorkflowGraph]:
+    def create_workflow(
+        self, sources: list[SourceDescriptor]
+    ) -> tuple[PipelinePlan, WorkflowGraph]:
         """Create plan and workflow graph from source descriptors."""
         capabilities = [
             self._capability_detector.detect(source)
