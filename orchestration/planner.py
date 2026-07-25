@@ -118,9 +118,13 @@ class DeterministicPipelinePlanner(PipelinePlanner):
         self._matcher = matcher or CapabilityMatcher()
 
     def plan(self, capabilities: list[SensorCapabilityProfile]) -> PipelinePlan:
+        # Sort first so equivalent inputs always produce the same plan.
         ordered_caps = sorted(capabilities, key=lambda item: item.source_id)
+        # Apply model and plugin selection independently so each candidate set is
+        # filtered against the same capability snapshot.
         selected_models = self._select_models(ordered_caps)
         selected_plugins = self._select_plugins(ordered_caps)
+        # Encode the final decision into a stable, human-readable identifier.
         plan_id = self._build_plan_id(ordered_caps, selected_models, selected_plugins)
 
         return PipelinePlan(
@@ -138,6 +142,7 @@ class DeterministicPipelinePlanner(PipelinePlanner):
     def _select_models(self, capabilities: list[SensorCapabilityProfile]) -> list[str]:
         selected: list[str] = []
         for model_name in sorted(self._model_requirements):
+            # Respect explicit allow-lists before checking capability matches.
             if (
                 self._constraints.allowed_models is not None
                 and model_name not in self._constraints.allowed_models
@@ -153,12 +158,14 @@ class DeterministicPipelinePlanner(PipelinePlanner):
         available_types = {cap.sensor_type for cap in capabilities}
 
         for plugin_name in sorted(self._plugin_requirements):
+            # Plugin routing uses the same constraint gate as models.
             if (
                 self._constraints.allowed_plugins is not None
                 and plugin_name not in self._constraints.allowed_plugins
             ):
                 continue
 
+            # A plugin is selected only when every required source type is present.
             required_sources = self._plugin_requirements[plugin_name].get("required_sources", [])
             required_set = {
                 source if isinstance(source, SensorType) else SensorType(source)
@@ -184,6 +191,8 @@ class GraphWorkflowBuilder(WorkflowBuilder):
     """Builds deterministic workflow graphs from a pipeline plan."""
 
     def build(self, plan: PipelinePlan) -> WorkflowGraph:
+        # Materialize plan decisions into graph nodes so the workflow stays
+        # directly traceable back to selected capabilities, models, and plugins.
         source_nodes = [
             WorkflowNode(node_id=f"source:{cap.source_id}", node_type="source")
             for cap in plan.capabilities
@@ -200,6 +209,7 @@ class GraphWorkflowBuilder(WorkflowBuilder):
 
         edges: list[WorkflowEdge] = []
         if model_nodes:
+            # Source observations feed every selected model.
             for source in source_nodes:
                 for model in model_nodes:
                     edges.append(
@@ -212,6 +222,8 @@ class GraphWorkflowBuilder(WorkflowBuilder):
 
         upstream_nodes = model_nodes or source_nodes
         if plugin_nodes:
+            # Fusion plugins consume the model layer when it exists, otherwise
+            # they consume the raw source layer.
             for upstream in upstream_nodes:
                 for plugin in plugin_nodes:
                     edges.append(
@@ -230,6 +242,8 @@ class GraphWorkflowBuilder(WorkflowBuilder):
                     )
                 )
         else:
+            # When no fusion stage is selected, upstream nodes connect directly
+            # to the workflow output.
             for upstream in upstream_nodes:
                 edges.append(
                     WorkflowEdge(
@@ -240,6 +254,7 @@ class GraphWorkflowBuilder(WorkflowBuilder):
                 )
 
         nodes = source_nodes + model_nodes + plugin_nodes + [output_node]
+        # Fail fast if graph wiring ever references a node that was not added.
         node_ids = {node.node_id for node in nodes}
         for edge in edges:
             if edge.source_id not in node_ids or edge.target_id not in node_ids:
@@ -274,6 +289,8 @@ class Orchestrator:
         self, sources: list[SourceDescriptor]
     ) -> tuple[PipelinePlan, WorkflowGraph]:
         """Create plan and workflow graph from source descriptors."""
+        # The orchestration flow is intentionally linear: detect capabilities,
+        # plan model/plugin selection, then compile the executable graph.
         capabilities = [
             self._capability_detector.detect(source)
             for source in sorted(sources, key=lambda item: item.source_id)
