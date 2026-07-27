@@ -2,7 +2,7 @@
 
 import pytest
 
-from acquisition import BaseDiscoveryProvider, CapabilityDetector
+from acquisition import BaseDiscoveryProvider, CapabilityDetector, SkellyCamDiscoveryProvider
 from schemas.capabilities import SensorCapabilityProfile, SensorType
 from schemas.models import SourceDescriptor
 
@@ -26,6 +26,10 @@ class _BadDiscoveryProvider(BaseDiscoveryProvider):
 
     def _discover(self):
         return [123]
+
+
+class _SkellyCamDiscoveryProvider(SkellyCamDiscoveryProvider):
+    """Test harness around the SkellyCam discovery adapter."""
 
 
 class _TypedCapabilityDetector(CapabilityDetector):
@@ -52,6 +56,56 @@ def test_source_discovery_returns_normalized_descriptors() -> None:
     assert all(isinstance(item, SourceDescriptor) for item in discovered)
     assert discovered[0].source_type is SensorType.RGB_CAMERA
     assert discovered[1].source_type is SensorType.DEPTH_CAMERA
+
+
+def test_skellycam_discovery_returns_canonical_descriptors() -> None:
+    """SkellyCam discovery should normalize mixed raw entries into descriptors."""
+    provider = _SkellyCamDiscoveryProvider(
+        [
+            {"id": "cam-b", "type": "depth_camera", "transport": "usb"},
+            SourceDescriptor(source_id="cam-a", source_type=SensorType.RGB_CAMERA),
+        ]
+    )
+
+    discovered = provider.discover()
+
+    assert [item.source_id for item in discovered] == ["cam-a", "cam-b"]
+    assert all(isinstance(item, SourceDescriptor) for item in discovered)
+    assert discovered[0].source_type is SensorType.RGB_CAMERA
+    assert discovered[1].source_type is SensorType.DEPTH_CAMERA
+
+
+def test_skellycam_discovery_is_deterministic() -> None:
+    """Repeated discovery over the same SkellyCam inputs should be stable."""
+    provider = _SkellyCamDiscoveryProvider(
+        [
+            {"id": "cam-c", "type": "rgb_camera"},
+            {"id": "cam-a", "type": "rgb_camera"},
+            {"id": "cam-b", "type": "depth_camera"},
+        ]
+    )
+
+    first = provider.discover()
+    second = provider.discover()
+
+    assert [item.source_id for item in first] == ["cam-a", "cam-b", "cam-c"]
+    assert first == second
+
+
+def test_skellycam_discovery_rejects_unknown_shape() -> None:
+    """Unknown SkellyCam payload shapes should fail clearly."""
+    provider = _SkellyCamDiscoveryProvider([123])
+
+    with pytest.raises(TypeError, match="Unsupported SkellyCam source shape"):
+        provider.discover()
+
+
+def test_skellycam_discovery_rejects_missing_required_fields() -> None:
+    """SkellyCam payloads missing required fields should fail clearly."""
+    provider = _SkellyCamDiscoveryProvider([{"type": "rgb_camera"}])
+
+    with pytest.raises(ValueError, match="missing required fields"):
+        provider.discover()
 
 
 def test_unknown_source_shapes_fail_safely() -> None:

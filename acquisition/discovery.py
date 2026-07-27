@@ -8,7 +8,7 @@ provider-specific discovery behavior isolated in protected hooks.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from typing import Any
 
 from pydantic import ValidationError
@@ -63,6 +63,26 @@ class NetworkStreamDiscoveryProvider(BaseDiscoveryProvider):
     """Discovery contract for RTSP/WebRTC/network camera sources."""
 
 
+class SkellyCamDiscoveryProvider(BaseDiscoveryProvider):
+    """Discovery adapter for SkellyCam source inventories."""
+
+    def __init__(
+        self,
+        sources: Iterable[SourceDescriptor | dict[str, Any]]
+        | Callable[[], Iterable[SourceDescriptor | dict[str, Any]]],
+    ) -> None:
+        self._source_loader = sources if callable(sources) else None
+        self._static_sources = None if callable(sources) else list(sources)
+
+    def _discover(self) -> Iterable[SourceDescriptor]:
+        if self._source_loader is not None:
+            discovered = self._source_loader()
+        else:
+            discovered = self._static_sources or []
+
+        return [_normalize_skellycam_source(item) for item in discovered]
+
+
 def _coerce_source_descriptor(
     value: SourceDescriptor | dict[str, Any],
 ) -> SourceDescriptor:
@@ -77,6 +97,47 @@ def _coerce_source_descriptor(
     raise TypeError("Unsupported source descriptor shape")
 
 
+def _normalize_skellycam_source(
+    value: SourceDescriptor | dict[str, Any],
+) -> SourceDescriptor:
+    """Convert SkellyCam source data into the canonical source descriptor."""
+
+    if isinstance(value, SourceDescriptor):
+        return value
+    if not isinstance(value, dict):
+        raise TypeError("Unsupported SkellyCam source shape")
+
+    payload = _skellycam_payload_to_source_descriptor(value)
+
+    try:
+        return SourceDescriptor.model_validate(payload)
+    except ValidationError as exc:
+        raise ValueError("Invalid SkellyCam source payload") from exc
+
+
+def _skellycam_payload_to_source_descriptor(value: dict[str, Any]) -> dict[str, Any]:
+    """Map common SkellyCam keys into the canonical source descriptor schema."""
+
+    if "source_id" in value and "source_type" in value:
+        return dict(value)
+
+    if "id" not in value or "type" not in value:
+        raise ValueError("SkellyCam source entry is missing required fields")
+
+    metadata = {
+        key: item
+        for key, item in value.items()
+        if key not in {"id", "type", "uri", "source_id", "source_type"}
+    }
+    payload: dict[str, Any] = {
+        "source_id": value["id"],
+        "source_type": value["type"],
+        "uri": value.get("uri"),
+        "metadata": metadata,
+    }
+    return payload
+
+
 __all__ = [
     "BaseDiscoveryProvider",
     "CameraDiscoveryProvider",
@@ -84,4 +145,5 @@ __all__ = [
     "DiscoveryLifecycleError",
     "NetworkStreamDiscoveryProvider",
     "ROSDiscoveryProvider",
+    "SkellyCamDiscoveryProvider",
 ]
