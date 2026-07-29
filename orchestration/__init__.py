@@ -1,5 +1,10 @@
 """Orchestration package public exports."""
 
+from .calibration_mapper import (
+	CalibrationArtifactError,
+	CalibrationMapping,
+	map_skellycam_calibration_artifact,
+)
 from .config_runtime import RuntimeAssembly, load_runtime_assembly
 from .planner import (
 	CapabilityMatcher,
@@ -16,6 +21,8 @@ from .planner import (
 )
 
 __all__ = [
+	"CalibrationArtifactError",
+	"CalibrationMapping",
 	"CapabilityMatcher",
 	"DefaultCapabilityDetector",
 	"DeterministicPipelinePlanner",
@@ -29,4 +36,5 @@ __all__ = [
 	"RuntimeAssembly",
 	"WorkflowBuilder",
 	"load_runtime_assembly",
+	"map_skellycam_calibration_artifact",
 ]
