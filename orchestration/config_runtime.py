@@ -1,7 +1,14 @@
 """Runtime assembly helpers for declarative configuration files.
 
-The config files under configs/ use JSON syntax, which is a valid YAML subset.
-This keeps parsing in the standard library while preserving `.yaml` filenames.
+This module performs config-driven orchestration wiring and graph creation:
+1) Load source/model/plugin/pipeline declarations from ``configs/*.yaml``
+    (stored as JSON-compatible YAML).
+2) Build typed sources, registries, and requirement maps.
+3) Instantiate deterministic planner + orchestrator with pipeline constraints.
+4) Execute orchestration to produce a ``PipelinePlan`` and ``WorkflowGraph``.
+
+The result is a single ``RuntimeAssembly`` object containing both configuration
+artifacts and the compiled workflow graph for execution.
 """
 
 from __future__ import annotations
@@ -27,7 +34,11 @@ from schemas.models import PipelinePlan
 
 @dataclass(slots=True)
 class RuntimeAssembly:
-    """Resolved runtime objects assembled from declarative config files."""
+    """Resolved runtime objects assembled from declarative config files.
+
+    Includes discovery inputs, registries, planner/orchestrator instances, and
+    the resulting deterministic plan and workflow graph.
+    """
 
     sources: list[SourceDescriptor]
     model_registry: ModelRegistry
@@ -41,12 +52,17 @@ class RuntimeAssembly:
 
 
 class StaticDiscoveryProvider(BaseDiscoveryProvider):
-    """Discovery provider backed entirely by config-defined source descriptors."""
+    """Discovery provider backed entirely by config-defined sources.
+
+    Used by runtime assembly to route configured source descriptors through the
+    same orchestration path used by dynamic discovery providers.
+    """
 
     def __init__(self, sources: list[SourceDescriptor]) -> None:
         self._sources = list(sources)
 
     def _discover(self):
+        """Return configured sources as-is for deterministic orchestration."""
         return list(self._sources)
 
 
@@ -55,7 +71,16 @@ def load_runtime_assembly(
     *,
     pipeline_name: str = "realtime_multicam",
 ) -> RuntimeAssembly:
-    """Load config files and assemble the minimal runtime wiring."""
+    """Load configs and assemble runtime wiring plus compiled workflow graph.
+
+    The named pipeline contributes candidate constraints:
+    - ``models`` limits selectable model adapters.
+    - ``fusion`` limits selectable fusion plugins.
+    - ``inputs`` filters which configured sources are considered.
+
+    The orchestrator then builds ``(plan, graph)`` by running capability
+    detection, deterministic planning, and workflow graph compilation.
+    """
 
     base_path = Path(config_dir)
     cameras_config = _load_json_yaml(base_path / "cameras.yaml")
@@ -105,6 +130,7 @@ def load_runtime_assembly(
 
 
 def _load_json_yaml(path: Path) -> dict[str, Any]:
+    """Load one JSON-compatible YAML file into a mapping object."""
     with path.open("r", encoding="utf-8") as handle:
         payload = json.load(handle)
     if not isinstance(payload, dict):
@@ -113,6 +139,7 @@ def _load_json_yaml(path: Path) -> dict[str, Any]:
 
 
 def _load_sources(config: dict[str, Any]) -> list[SourceDescriptor]:
+    """Convert camera/source config objects into typed source descriptors."""
     raw_sources = config.get("sources", [])
     sources: list[SourceDescriptor] = []
 
@@ -120,6 +147,8 @@ def _load_sources(config: dict[str, Any]) -> list[SourceDescriptor]:
         if not isinstance(item, dict):
             raise ValueError("Source config entries must be objects")
 
+        # Config loading maps external `id` directly to canonical `source_id`.
+        # Runtime assembly does not generate new source identifiers.
         source_id = item["id"]
         sensor_type = SensorType(item["type"])
         uri = item.get("uri")
@@ -140,6 +169,10 @@ def _load_sources(config: dict[str, Any]) -> list[SourceDescriptor]:
 
 
 def _validate_referenced_files(sources: list[SourceDescriptor], repo_root: Path) -> None:
+    """Validate that source metadata file references exist on disk.
+
+    Currently validates optional calibration paths when provided as strings.
+    """
     for source in sources:
         calibration = source.metadata.get("calibration")
         if isinstance(calibration, str):
@@ -151,6 +184,11 @@ def _validate_referenced_files(sources: list[SourceDescriptor], repo_root: Path)
 def _load_models(
     config: dict[str, Any],
 ) -> tuple[ModelRegistry, dict[str, ModelRequirements]]:
+    """Load enabled models into the registry and requirement map.
+
+    The requirement map feeds planner capability matching; registry entries
+    enable later runtime lookup/instantiation by model name.
+    """
     registry = ModelRegistry()
     requirements: dict[str, ModelRequirements] = {}
 
@@ -176,6 +214,11 @@ def _load_models(
 def _load_plugins(
     config: dict[str, Any],
 ) -> tuple[PluginRegistry, dict[str, dict[str, Any]]]:
+    """Load enabled plugins into the registry and requirement map.
+
+    Plugin requirements are consumed by planner subset checks against available
+    source sensor types.
+    """
     registry = PluginRegistry()
     requirements: dict[str, dict[str, Any]] = {}
 
@@ -196,6 +239,10 @@ def _load_plugins(
 def _filter_sources(
     sources: list[SourceDescriptor], required_types: list[str]
 ) -> list[SourceDescriptor]:
+    """Filter configured sources to those required by the selected pipeline.
+
+    Returns all sources when no input filter is declared.
+    """
     required = {SensorType(value) for value in required_types}
     if not required:
         return list(sources)
@@ -206,6 +253,7 @@ def _filter_sources(
 
 
 def _import_symbol(path: str) -> Any:
+    """Import and return a symbol from a ``module.attribute`` string path."""
     module_name, _, attr_name = path.rpartition(".")
     if not module_name or not attr_name:
         raise ValueError(f"Invalid import path: {path}")

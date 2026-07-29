@@ -34,6 +34,10 @@ class BaseDiscoveryProvider(ABC):
 
         The public wrapper normalizes and sorts all discovered descriptors so
         downstream consumers receive a stable source inventory.
+
+        Note:
+            Discovery does not generate source identifiers. `source_id` values
+            are preserved from provider payloads after schema normalization.
         """
         discovered = self._discover()
         normalized = [_coerce_source_descriptor(item) for item in discovered]
@@ -119,6 +123,7 @@ def _skellycam_payload_to_source_descriptor(value: dict[str, Any]) -> dict[str, 
     """Map common SkellyCam keys into the canonical source descriptor schema."""
 
     if "source_id" in value and "source_type" in value:
+        # Preserve canonical IDs as provided by the upstream source inventory.
         return dict(value)
 
     if "id" not in value or "type" not in value:
@@ -130,6 +135,8 @@ def _skellycam_payload_to_source_descriptor(value: dict[str, Any]) -> dict[str, 
         if key not in {"id", "type", "uri", "source_id", "source_type"}
     }
     payload: dict[str, Any] = {
+        # Discovery performs a key mapping only: id -> source_id.
+        # IDs are not synthesized, hashed, or otherwise recalculated here.
         "source_id": value["id"],
         "source_type": value["type"],
         "uri": value.get("uri"),

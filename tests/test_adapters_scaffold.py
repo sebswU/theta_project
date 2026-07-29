@@ -2,7 +2,7 @@
 
 import pytest
 
-from adapters import SensorAdapter, SensorAdapterLifecycleError
+from adapters import SensorAdapter, SensorAdapterLifecycleError, URISensorAdapter
 from schemas.capabilities import SensorType
 from schemas.models import Frame, SourceDescriptor
 
@@ -78,3 +78,52 @@ def test_abstract_contract_cannot_be_bypassed() -> None:
 
             def _disconnect(self) -> None:
                 return
+
+
+def test_uri_sensor_adapter_emits_uri_in_frame_payload() -> None:
+    """URI-backed adapter should connect and surface URI context in frame payload."""
+    source = SourceDescriptor(
+        source_id="stream-1",
+        source_type=SensorType.NETWORK_STREAM,
+        uri="rtsp://localhost:8554/live",
+    )
+    adapter = URISensorAdapter(source)
+
+    adapter.connect()
+    frame = adapter.read()
+    adapter.disconnect()
+
+    assert frame.source_id == "stream-1"
+    assert frame.payload["uri"] == "rtsp://localhost:8554/live"
+    assert frame.payload["connection_kind"] == "network"
+    assert frame.payload["sequence"] == 1
+
+
+def test_uri_sensor_adapter_rejects_missing_uri() -> None:
+    """URI-backed adapter should fail fast when source URI is absent."""
+    source = SourceDescriptor(
+        source_id="stream-2",
+        source_type=SensorType.NETWORK_STREAM,
+        uri=None,
+    )
+    adapter = URISensorAdapter(source)
+
+    with pytest.raises(ValueError, match="Source URI is required"):
+        adapter.connect()
+
+
+def test_uri_sensor_adapter_supports_local_path_uri() -> None:
+    """Plain local paths should be treated as path-style connection endpoints."""
+    source = SourceDescriptor(
+        source_id="dataset-1",
+        source_type=SensorType.DATASET,
+        uri="./data/sample.mp4",
+    )
+    adapter = URISensorAdapter(source)
+
+    adapter.connect()
+    frame = adapter.read()
+    adapter.disconnect()
+
+    assert frame.payload["connection_kind"] == "path"
+    assert frame.payload["uri"].endswith("data/sample.mp4")
