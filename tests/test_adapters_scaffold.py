@@ -2,7 +2,12 @@
 
 import pytest
 
-from adapters import SensorAdapter, SensorAdapterLifecycleError, URISensorAdapter
+from adapters import (
+    SensorAdapter,
+    SensorAdapterLifecycleError,
+    SkellyCamFrameAdapter,
+    URISensorAdapter,
+)
 from schemas.capabilities import SensorType
 from schemas.models import Frame, SourceDescriptor
 
@@ -127,3 +132,80 @@ def test_uri_sensor_adapter_supports_local_path_uri() -> None:
 
     assert frame.payload["connection_kind"] == "path"
     assert frame.payload["uri"].endswith("data/sample.mp4")
+
+
+def test_skellycam_frame_adapter_outputs_canonical_frame() -> None:
+    """SkellyCam frames should map into the canonical Frame envelope."""
+    source = _source_descriptor()
+    adapter = SkellyCamFrameAdapter(
+        source,
+        frames=[
+            {
+                "frame_id": "raw-1",
+                "source_id": "cam-1",
+                "timestamp_ns": 123,
+                "payload": {"image": "rgb-bytes"},
+            }
+        ],
+    )
+
+    adapter.connect()
+    frame = adapter.read()
+    adapter.disconnect()
+
+    assert isinstance(frame, Frame)
+    assert frame.frame_id == "raw-1"
+    assert frame.source_id == "cam-1"
+    assert frame.timestamp_ns == 123
+    assert frame.payload["image"] == "rgb-bytes"
+
+
+def test_skellycam_frame_adapter_rejects_missing_timestamp() -> None:
+    """Frames missing timestamp fields should fail safe."""
+    source = _source_descriptor()
+    adapter = SkellyCamFrameAdapter(
+        source,
+        frames=[{"frame_id": "raw-2", "source_id": "cam-1", "payload": {}}],
+    )
+
+    adapter.connect()
+    with pytest.raises(ValueError, match="missing required timestamp"):
+        adapter.read()
+
+
+def test_skellycam_frame_adapter_rejects_missing_source_id() -> None:
+    """Frames missing source identity should fail safe."""
+    source = _source_descriptor()
+    adapter = SkellyCamFrameAdapter(
+        source,
+        frames=[{"frame_id": "raw-3", "timestamp_ns": 456, "payload": {}}],
+    )
+
+    adapter.connect()
+    with pytest.raises(ValueError, match="missing required source_id"):
+        adapter.read()
+
+
+def test_skellycam_frame_adapter_preserves_payload_metadata() -> None:
+    """Metadata from incoming payload should survive canonical wrapping."""
+    source = _source_descriptor()
+    adapter = SkellyCamFrameAdapter(
+        source,
+        frames=[
+            {
+                "id": "fallback-id",
+                "source_id": "cam-1",
+                "timestamp": 789,
+                "metadata": {"exposure": 0.01, "gain": 2.0},
+                "payload": {"encoding": "rgb8"},
+            }
+        ],
+    )
+
+    adapter.connect()
+    frame = adapter.read()
+    adapter.disconnect()
+
+    assert frame.timestamp_ns == 789
+    assert frame.payload["encoding"] == "rgb8"
+    assert frame.payload["metadata"] == {"exposure": 0.01, "gain": 2.0}
