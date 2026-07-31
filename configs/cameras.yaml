@@ -3,6 +3,7 @@
     {
       "id": "cam_front_rgb",
       "type": "rgb_camera",
+      "adapter": "adapters.skellycam_frame_adapter.SkellyCamFrameAdapter",
       "uri": "usb://front-rgb",
       "transport": "usb",
       "supports_calibration": true,
@@ -12,6 +13,7 @@
     {
       "id": "cam_left_depth",
       "type": "depth_camera",
+      "adapter": "adapters.skellycam_frame_adapter.SkellyCamFrameAdapter",
       "uri": "rtsp://example.local/left_depth",
       "transport": "rtsp",
       "supports_synchronization": true
@@ -19,6 +21,7 @@
     {
       "id": "imu_base",
       "type": "imu",
+      "adapter": "adapters.uri_sensor_adapter.URISensorAdapter",
       "uri": "ros2:///imu/data",
       "transport": "ros2",
       "topic": "/imu/data"

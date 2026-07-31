@@ -20,9 +20,15 @@ class SkellyCamFrameAdapter(SensorAdapter):
     def __init__(
         self,
         source,
-        frames: Iterable[Frame | dict[str, Any]] | Callable[[], Iterable[Frame | dict[str, Any]]],
+        frames: (
+            Iterable[Frame | dict[str, Any]]
+            | Callable[[], Iterable[Frame | dict[str, Any]]]
+            | None
+        ) = None,
     ) -> None:
         super().__init__(source)
+        if frames is None:
+            frames = []
         self._frame_loader = frames if callable(frames) else None
         self._static_frames = None if callable(frames) else list(frames)
         self._frames_iter: Iterator[Frame | dict[str, Any]] | None = None
