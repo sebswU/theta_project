@@ -19,8 +19,8 @@ from importlib import import_module
 from pathlib import Path
 from typing import Any
 
-from adapters import SensorAdapter
 from acquisition import BaseDiscoveryProvider
+from adapters import SensorAdapter
 from orchestration.planner import (
     DefaultCapabilityDetector,
     DeterministicPipelinePlanner,

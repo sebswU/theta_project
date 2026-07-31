@@ -34,7 +34,11 @@ class SkellyCamFrameAdapter(SensorAdapter):
         self._frames_iter: Iterator[Frame | dict[str, Any]] | None = None
 
     def _connect(self) -> None:
-        discovered = self._frame_loader() if self._frame_loader is not None else self._static_frames or []
+        discovered = (
+            self._frame_loader()
+            if self._frame_loader is not None
+            else self._static_frames or []
+        )
         self._frames_iter = iter(discovered)
 
     def _read(self) -> Frame:

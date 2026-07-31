@@ -118,7 +118,9 @@ def _parse_intrinsics(payload: dict[str, Any]) -> dict[str, float | int]:
     width = raw_intrinsics.get("width", payload.get("width"))
     height = raw_intrinsics.get("height", payload.get("height"))
 
-    if isinstance(raw_intrinsics.get("resolution"), list) and len(raw_intrinsics["resolution"]) == 2:
+    if isinstance(raw_intrinsics.get("resolution"), list) and len(
+        raw_intrinsics["resolution"]
+    ) == 2:
         width = raw_intrinsics["resolution"][0]
         height = raw_intrinsics["resolution"][1]
 
