@@ -1,7 +1,17 @@
-"""Pipeline orchestration contracts.
+"""Pipeline orchestration contracts and deterministic workflow compilation.
 
-The orchestration layer maps capabilities to model adapters, fusion plugins,
-and execution graphs without embedding model-specific implementation logic.
+Graph construction in this module follows a stable three-stage flow:
+1) Capability detection converts each discovered source into a normalized
+    :class:`SensorCapabilityProfile`.
+2) Planning selects compatible models and fusion plugins by checking whether
+    each candidate's required sensor types are a subset of available types,
+    optionally constrained by allow-lists.
+3) Workflow building compiles the plan into a deterministic layered
+    :class:`WorkflowGraph`:
+    source nodes -> model nodes (if any) -> plugin nodes (if any) -> output.
+
+The implementation is intentionally model-agnostic and deterministic so that
+equivalent inputs produce equivalent plans and graph topology.
 """
 
 from __future__ import annotations
@@ -38,7 +48,11 @@ __all__ = [
 
 @dataclass(slots=True)
 class ExecutionNode:
-    """Single execution graph node metadata."""
+    """Single execution graph node metadata.
+
+    This legacy-friendly node shape is kept as a lightweight container for
+    runtime metadata and compatibility aliases.
+    """
 
     node_id: str
     node_type: str
@@ -47,7 +61,11 @@ class ExecutionNode:
 
 @dataclass(slots=True)
 class ExecutionGraph:
-    """Execution graph description for runtime orchestration."""
+    """Execution graph description for runtime orchestration.
+
+    This dataclass mirrors the high-level workflow graph concept with simple
+    node and edge containers.
+    """
 
     nodes: list[ExecutionNode] = field(default_factory=list)
     edges: list[tuple[str, str]] = field(default_factory=list)
@@ -59,31 +77,52 @@ class PipelineBuilder(WorkflowBuilder):
 
 @dataclass(slots=True)
 class PlanningConstraints:
-    """Deterministic candidate constraints for planner selection."""
+    """Deterministic candidate constraints for planner selection.
+
+    If a set is provided, only candidates in that set are considered. Matching
+    still requires capability requirements to be satisfied.
+    """
 
     allowed_models: set[str] | None = None
     allowed_plugins: set[str] | None = None
 
 
 class CapabilityMatcher:
-    """Matches capabilities against model/plugin requirements."""
+    """Matches capabilities against model/plugin requirements.
+
+    Matching uses a strict subset rule: all required source sensor types must
+    be present in the capability set.
+    """
 
     def match(
         self,
         capabilities: list[SensorCapabilityProfile],
         candidate_requirements: ModelRequirements,
     ) -> bool:
-        """Check if capabilities satisfy model requirements deterministically."""
+        """Return ``True`` when required sources are covered by capabilities.
+
+        The check is deterministic and order-independent because it compares
+        normalized sensor-type sets.
+        """
         available_types = {cap.sensor_type for cap in capabilities}
         required = set(candidate_requirements.required_sources)
         return required.issubset(available_types)
 
 
 class DefaultCapabilityDetector(CapabilityDetectorContract):
-    """Deterministic capability detector from source descriptors."""
+    """Deterministic capability detector from source descriptors.
+
+    Converts ``SourceDescriptor`` entries into planner-facing capability
+    profiles with normalized feature flags used during candidate selection.
+    """
 
     def _detect(self, source_descriptor: SourceDescriptor) -> SensorCapabilityProfile:
-        """Map source descriptor type to normalized planner-facing capabilities."""
+        """Map one source descriptor to a normalized capability profile.
+
+        Sensor family determines baseline support flags (for example RGB and
+        depth), while optional features (sync/calibration/multiview) are read
+        from descriptor metadata.
+        """
         sensor_type = source_descriptor.source_type
         return SensorCapabilityProfile(
             source_id=source_descriptor.source_id,
@@ -103,7 +142,12 @@ class DefaultCapabilityDetector(CapabilityDetectorContract):
 
 
 class DeterministicPipelinePlanner(PipelinePlanner):
-    """Planner that deterministically selects models/plugins under constraints."""
+    """Deterministically select models and plugins from capabilities.
+
+    Candidate names are iterated in sorted order to provide stable output.
+    Selection applies two gates: explicit allow-list constraints and
+    capability-requirement matching.
+    """
 
     def __init__(
         self,
@@ -118,6 +162,11 @@ class DeterministicPipelinePlanner(PipelinePlanner):
         self._matcher = matcher or CapabilityMatcher()
 
     def plan(self, capabilities: list[SensorCapabilityProfile]) -> PipelinePlan:
+        """Build a stable pipeline plan from capability profiles.
+
+        The result includes selected models/plugins plus a deterministic plan ID
+        that encodes sources and chosen components.
+        """
         ordered_caps = sorted(capabilities, key=lambda item: item.source_id)
         selected_models = self._select_models(ordered_caps)
         selected_plugins = self._select_plugins(ordered_caps)
@@ -136,6 +185,7 @@ class DeterministicPipelinePlanner(PipelinePlanner):
         )
 
     def _select_models(self, capabilities: list[SensorCapabilityProfile]) -> list[str]:
+        """Select compatible model candidates in deterministic name order."""
         selected: list[str] = []
         for model_name in sorted(self._model_requirements):
             if (
@@ -149,6 +199,7 @@ class DeterministicPipelinePlanner(PipelinePlanner):
         return selected
 
     def _select_plugins(self, capabilities: list[SensorCapabilityProfile]) -> list[str]:
+        """Select compatible plugin candidates in deterministic name order."""
         selected: list[str] = []
         available_types = {cap.sensor_type for cap in capabilities}
 
@@ -174,6 +225,11 @@ class DeterministicPipelinePlanner(PipelinePlanner):
         selected_models: list[str],
         selected_plugins: list[str],
     ) -> str:
+        """Create a deterministic identifier for plan reproducibility.
+
+        The format embeds source IDs, model names, and plugin names in
+        canonical order, enabling easy equality checks across runs.
+        """
         sources = "+".join(cap.source_id for cap in capabilities) or "none"
         models = "+".join(selected_models) or "none"
         plugins = "+".join(selected_plugins) or "none"
@@ -181,9 +237,24 @@ class DeterministicPipelinePlanner(PipelinePlanner):
 
 
 class GraphWorkflowBuilder(WorkflowBuilder):
-    """Builds deterministic workflow graphs from a pipeline plan."""
+    """Compile a pipeline plan into a deterministic layered workflow graph.
+
+    Node layers are always emitted in this order:
+    sources, models, plugins, output.
+
+    Edge policy:
+    - source -> model (when models exist)
+    - upstream -> plugin (upstream is models if present, else sources)
+    - plugin -> output (when plugins exist)
+    - upstream -> output (fallback when no plugins)
+    """
 
     def build(self, plan: PipelinePlan) -> WorkflowGraph:
+        """Build and validate the workflow graph for an orchestration plan.
+
+        Raises:
+            ValueError: If any generated edge references a missing node ID.
+        """
         source_nodes = [
             WorkflowNode(node_id=f"source:{cap.source_id}", node_type="source")
             for cap in plan.capabilities
@@ -258,7 +329,11 @@ class GraphWorkflowBuilder(WorkflowBuilder):
 
 
 class Orchestrator:
-    """Wires capability detection, planning, and graph building."""
+    """Coordinate capability detection, planning, and graph compilation.
+
+    This class is the end-to-end orchestration entrypoint for producing a
+    ``(PipelinePlan, WorkflowGraph)`` pair from discovered sources.
+    """
 
     def __init__(
         self,
@@ -273,7 +348,11 @@ class Orchestrator:
     def create_workflow(
         self, sources: list[SourceDescriptor]
     ) -> tuple[PipelinePlan, WorkflowGraph]:
-        """Create plan and workflow graph from source descriptors."""
+        """Create a deterministic plan and workflow graph from sources.
+
+        Sources are sorted by ``source_id`` before capability detection so the
+        resulting plan and graph remain stable for equivalent inputs.
+        """
         capabilities = [
             self._capability_detector.detect(source)
             for source in sorted(sources, key=lambda item: item.source_id)

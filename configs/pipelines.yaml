@@ -11,6 +11,12 @@
       "models": ["sam2"],
       "fusion": ["scene_graph"],
       "outputs": ["mesh_export"]
+    },
+    "skellycam_minimal": {
+      "inputs": ["rgb_camera"],
+      "models": ["rtmpose"],
+      "fusion": ["scene_graph"],
+      "outputs": ["scene_graph"]
     }
   }
 }

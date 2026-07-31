@@ -8,6 +8,7 @@ from .discovery import (
 	DiscoveryLifecycleError,
 	NetworkStreamDiscoveryProvider,
 	ROSDiscoveryProvider,
+	SkellyCamDiscoveryProvider,
 )
 
 __all__ = [
@@ -19,4 +20,5 @@ __all__ = [
 	"DiscoveryLifecycleError",
 	"NetworkStreamDiscoveryProvider",
 	"ROSDiscoveryProvider",
+	"SkellyCamDiscoveryProvider",
 ]
