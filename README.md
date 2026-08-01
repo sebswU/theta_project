@@ -6,10 +6,11 @@ thin adapter architecture. [See system architecture blueprint here.](https://dri
 
 ## Repository Intent
 
-- Architecture and scaffolding only
-- No model inference logic
-- No algorithmic CV implementation
-- Strongly typed interfaces for model, fusion, discovery, orchestration, and visualization layers
+- Production-oriented integration scaffold for heterogeneous CV systems
+- Config-driven runtime assembly with deterministic planning and workflow graph compilation
+- Strongly typed contracts across discovery, capabilities, schemas, registries, fusion, and orchestration
+- Contract-hardening focus: fail-fast validation, explicit boundary errors, and CI guardrails
+- No heavy CV algorithm implementation in-repo; adapters expose stable interfaces for external models/plugins
 
 ## Core Flow
 
@@ -42,5 +43,7 @@ make typecheck
 
 ## TODO
 
-- TODO: Implement runtime wiring in orchestration modules.
-- TODO: Implement adapter runtime logic per deployment environment.
+- TODO: Expand boundary contract tests for additional plugin/model lifecycle edge cases.
+- TODO: Add integration checks for multi-source runtime paths (SkellyCam + URI + IMU) in CI.
+- TODO: Add architecture decision records (ADRs) for deterministic planning and contract policy.
+- TODO: Add deployment-specific adapter runbooks (ROS2/GStreamer) with troubleshooting guidance.
