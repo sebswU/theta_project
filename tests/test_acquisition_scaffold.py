@@ -46,6 +46,13 @@ class _BadCapabilityDetector(CapabilityDetector):
         return 42
 
 
+class _MalformedCapabilityDetector(CapabilityDetector):
+    """Capability detector that emits malformed payload values."""
+
+    def _detect(self, source_descriptor: SourceDescriptor):
+        return {"sensor_type": 123}
+
+
 def test_source_discovery_returns_normalized_descriptors() -> None:
     """Discovery should return sorted canonical SourceDescriptor instances."""
     provider = _MixedDiscoveryProvider()
@@ -136,6 +143,23 @@ def test_unknown_capability_shapes_fail_safely() -> None:
     source = SourceDescriptor(source_id="cam-1", source_type=SensorType.RGB_CAMERA)
 
     with pytest.raises(TypeError, match="Unsupported capability profile shape"):
+        detector.detect(source)
+
+
+def test_invalid_source_payload_fails_clearly() -> None:
+    """Malformed SkellyCam source payloads should fail with explicit error text."""
+    provider = _SkellyCamDiscoveryProvider([123])
+
+    with pytest.raises(TypeError, match="Unsupported SkellyCam source shape"):
+        provider.discover()
+
+
+def test_invalid_capability_payload_fails_clearly() -> None:
+    """Malformed capability payloads should fail with explicit error text."""
+    detector = _MalformedCapabilityDetector()
+    source = SourceDescriptor(source_id="cam-1", source_type=SensorType.RGB_CAMERA)
+
+    with pytest.raises(ValueError, match="Invalid capability profile payload"):
         detector.detect(source)
 
 

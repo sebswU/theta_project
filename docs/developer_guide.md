@@ -37,3 +37,19 @@ Failure behavior:
 ## TODO
 
 - TODO: Add coding standards and code owners.
+
+## Operator Runbook: Contract Guardrails
+
+Use these checks before opening a pull request to catch wiring and schema regressions early.
+
+Quick verification commands:
+
+- `ruff check .`
+- `pytest -q tests/test_configs_scaffold.py -k "test_missing_adapter_symbol_fails_clearly or test_missing_plugin_symbol_fails_clearly or test_missing_calibration_reference_fails_clearly or test_skellycam_runtime_smoke_path"`
+- `pytest -q tests/test_acquisition_scaffold.py -k "test_invalid_source_payload_fails_clearly or test_invalid_capability_payload_fails_clearly"`
+
+Expected outcomes:
+
+- Missing adapter/plugin symbols fail with a clear `Missing configured symbol: ...` message.
+- Missing calibration references fail with `Referenced calibration file does not exist`.
+- Invalid source and capability payloads fail at the boundary with explicit validation errors.

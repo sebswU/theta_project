@@ -8,6 +8,27 @@ permissions:
   contents: read
 
 jobs:
+  contract-guardrails:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e .[dev]
+      - run: ruff check .
+      - run: >-
+          pytest -q tests/test_configs_scaffold.py
+          -k "test_missing_adapter_symbol_fails_clearly
+          or test_missing_plugin_symbol_fails_clearly
+          or test_missing_calibration_reference_fails_clearly
+          or test_skellycam_runtime_smoke_path"
+      - run: >-
+          pytest -q tests/test_acquisition_scaffold.py
+          -k "test_invalid_source_payload_fails_clearly
+          or test_invalid_capability_payload_fails_clearly"
+
   pytest:
     runs-on: ubuntu-latest
     steps:
