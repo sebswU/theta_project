@@ -93,20 +93,34 @@ def test_minimal_end_to_end_path_assembles_without_manual_edits() -> None:
     assert any(node.node_type == "fusion_plugin" for node in assembly.graph.nodes)
 
 
-def test_invalid_source_adapter_symbol_fails_assembly(tmp_path: Path) -> None:
-    """Assembly should fail when a source adapter class path cannot be resolved."""
+def test_missing_adapter_symbol_fails_clearly(tmp_path: Path) -> None:
+    """Assembly should fail with a clear error when adapter symbol is missing."""
     config_dir = _copy_config_dir(CONFIG_DIR, tmp_path)
     cameras_path = config_dir / "cameras.yaml"
     cameras = json.loads(cameras_path.read_text(encoding="utf-8"))
-    cameras["sources"][0]["adapter"] = "adapters.skellycam_frame_adapter.MissingAdapter"
+    missing_symbol = "adapters.skellycam_frame_adapter.MissingAdapter"
+    cameras["sources"][0]["adapter"] = missing_symbol
     cameras_path.write_text(json.dumps(cameras, indent=2), encoding="utf-8")
 
-    with pytest.raises(ValueError, match="Missing configured symbol"):
+    with pytest.raises(ValueError, match=f"Missing configured symbol: {missing_symbol}"):
         load_runtime_assembly(config_dir)
 
 
-def test_missing_calibration_reference_fails_assembly(tmp_path: Path) -> None:
-    """Assembly should fail fast when configured calibration artifacts are absent."""
+def test_missing_plugin_symbol_fails_clearly(tmp_path: Path) -> None:
+    """Assembly should fail with a clear error when plugin symbol is missing."""
+    config_dir = _copy_config_dir(CONFIG_DIR, tmp_path)
+    plugins_path = config_dir / "plugins.yaml"
+    plugins = json.loads(plugins_path.read_text(encoding="utf-8"))
+    missing_symbol = "fusion.plugins.MissingPlugin"
+    plugins["plugins"][0]["class"] = missing_symbol
+    plugins_path.write_text(json.dumps(plugins, indent=2), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=f"Missing configured symbol: {missing_symbol}"):
+        load_runtime_assembly(config_dir)
+
+
+def test_missing_calibration_reference_fails_clearly(tmp_path: Path) -> None:
+    """Assembly should fail fast with clear messaging for missing calibration artifacts."""
     config_dir = _copy_config_dir(CONFIG_DIR, tmp_path)
     cameras_path = config_dir / "cameras.yaml"
     cameras = json.loads(cameras_path.read_text(encoding="utf-8"))
