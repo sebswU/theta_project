@@ -35,7 +35,7 @@ make test
 make typecheck
 ```
 
-## Extension Notes
+## Notes for Adding Extensions
 
 - Implement a new model by subclassing `registry.cvpr_model.CVPRModel`.
 - Implement new sensor sources via `adapters.sensor_adapter.SensorAdapter`.
