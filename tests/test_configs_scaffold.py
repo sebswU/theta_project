@@ -11,7 +11,14 @@ from adapters import SkellyCamFrameAdapter, URISensorAdapter
 from fusion.plugins import SceneGraphPlugin
 from orchestration import load_runtime_assembly
 from registry.cvpr_model import CVPRModel
-from schemas import Frame, FusionConfiguration, FusionRequest, InferenceRequest
+from schemas import (
+    Frame,
+    FusionConfiguration,
+    FusionRequest,
+    FusionResponse,
+    InferenceRequest,
+    InferenceResponse,
+)
 
 CONFIG_DIR = Path(__file__).resolve().parents[1] / "configs"
 
@@ -110,26 +117,39 @@ def test_missing_calibration_reference_fails_assembly(tmp_path: Path) -> None:
         load_runtime_assembly(config_dir)
 
 
-def test_configured_runtime_smoke_path() -> None:
-    """Configured runtime should support a minimal model and fusion smoke path."""
-    assembly = load_runtime_assembly(CONFIG_DIR)
+def test_skellycam_runtime_smoke_path() -> None:
+    """SkellyCam minimal config should run a fast model + fusion smoke path."""
+    assembly = load_runtime_assembly(CONFIG_DIR, pipeline_name="skellycam_minimal")
     source = assembly.sources[0]
     frame = Frame(frame_id="frame-1", timestamp_ns=1, source_id=source.source_id)
 
+    assert assembly.pipeline_name == "skellycam_minimal"
+    assert [source.source_id for source in assembly.sources] == ["cam_front_rgb"]
+    assert assembly.plan.selected_models == ["rtmpose"]
+    assert assembly.plan.selected_plugins == ["scene_graph"]
+
     model_name = assembly.plan.selected_models[0]
     model = assembly.model_registry.create(model_name)
+    assert model.is_loaded is False
     model.load()
+    assert model.is_loaded is True
     inference = model.infer(InferenceRequest(request_id="infer-1", frames=[frame]))
+    assert isinstance(inference, InferenceResponse)
 
     plugin_name = assembly.plan.selected_plugins[0]
     plugin = assembly.plugin_registry.create(plugin_name)
     plugin.initialize(FusionConfiguration(plugin_name=plugin.__class__.__name__))
     fusion = plugin.process(FusionRequest(request_id="fuse-1", inputs=[frame]))
+    assert isinstance(fusion, FusionResponse)
 
+    assert inference.request_id == "infer-1"
     assert inference.outputs["model_name"] == model_name
     assert inference.outputs["frame_count"] == 1
+    assert fusion.request_id == "fuse-1"
     assert fusion.outputs["frame_count"] == 1
     assert fusion.outputs["route"] == plugin.output_type()
+    assert fusion.metadata["plugin_name"] == plugin.__class__.__name__
+    assert fusion.metadata["output_type"] == plugin.output_type()
 
 
 def _copy_config_dir(source_dir: Path, tmp_path: Path) -> Path:
