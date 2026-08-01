@@ -7,18 +7,18 @@ from orchestration import (
     Orchestrator,
     PlanningConstraints,
 )
-from schemas import ModelRequirements, SensorType, SourceDescriptor
+from schemas import ModelRequirements, SensorCapabilityProfile, SensorType, SourceDescriptor
 
 
-def _sources() -> list[SourceDescriptor]:
+def _skellycam_sources() -> list[SourceDescriptor]:
     return [
         SourceDescriptor(
-            source_id="cam-rgb",
+            source_id="skellycam-front-rgb",
             source_type=SensorType.RGB_CAMERA,
             metadata={"supports_calibration": True, "supports_multiview": True},
         ),
         SourceDescriptor(
-            source_id="cam-depth",
+            source_id="skellycam-left-depth",
             source_type=SensorType.DEPTH_CAMERA,
             metadata={"supports_synchronization": True},
         ),
@@ -50,13 +50,21 @@ def _planner(constraints: PlanningConstraints | None = None) -> DeterministicPip
     )
 
 
-def test_capabilities_produce_deterministic_plans() -> None:
-    """Equivalent source capability inputs should yield stable plan IDs and choices."""
+def test_skellycam_capabilities_produce_deterministic_plan() -> None:
+    """Equivalent SkellyCam capability inputs should yield stable deterministic plans."""
     detector = DefaultCapabilityDetector()
     planner = _planner()
 
-    caps_a = [detector.detect(source) for source in _sources()]
-    caps_b = [detector.detect(source) for source in reversed(_sources())]
+    caps_a = [detector.detect(source) for source in _skellycam_sources()]
+    caps_b = [detector.detect(source) for source in reversed(_skellycam_sources())]
+
+    assert all(isinstance(capability, SensorCapabilityProfile) for capability in caps_a)
+    caps_by_source = {capability.source_id: capability for capability in caps_a}
+    assert caps_by_source["skellycam-front-rgb"].supports_rgb is True
+    assert caps_by_source["skellycam-front-rgb"].supports_calibration is True
+    assert caps_by_source["skellycam-front-rgb"].supports_multiview is True
+    assert caps_by_source["skellycam-left-depth"].supports_depth is True
+    assert caps_by_source["skellycam-left-depth"].supports_synchronization is True
 
     plan_a = planner.plan(caps_a)
     plan_b = planner.plan(caps_b)
@@ -66,8 +74,8 @@ def test_capabilities_produce_deterministic_plans() -> None:
     assert plan_a.selected_plugins == plan_b.selected_plugins == ["temporal", "volumetric"]
 
 
-def test_planning_respects_candidate_constraints() -> None:
-    """Planner should only select candidates allowed by explicit constraints."""
+def test_skellycam_planning_respects_allowed_candidates() -> None:
+    """SkellyCam planning should strictly respect explicit candidate allow-lists."""
     detector = DefaultCapabilityDetector()
     planner = _planner(
         constraints=PlanningConstraints(
@@ -76,20 +84,22 @@ def test_planning_respects_candidate_constraints() -> None:
         )
     )
 
-    capabilities = [detector.detect(source) for source in _sources()]
+    capabilities = [detector.detect(source) for source in _skellycam_sources()]
     plan = planner.plan(capabilities)
 
     assert plan.selected_models == ["rgb-model"]
     assert plan.selected_plugins == ["temporal"]
+    assert set(plan.selected_models).issubset({"rgb-model"})
+    assert set(plan.selected_plugins).issubset({"temporal"})
 
 
-def test_execution_graph_is_structurally_valid() -> None:
-    """Workflow graph should have valid node endpoints for every edge."""
+def test_skellycam_workflow_graph_is_structurally_valid() -> None:
+    """Workflow graph edges should always reference existing node endpoints."""
     detector = DefaultCapabilityDetector()
     planner = _planner()
     builder = GraphWorkflowBuilder()
 
-    capabilities = [detector.detect(source) for source in _sources()]
+    capabilities = [detector.detect(source) for source in _skellycam_sources()]
     plan = planner.plan(capabilities)
     graph = builder.build(plan)
 
@@ -99,15 +109,15 @@ def test_execution_graph_is_structurally_valid() -> None:
     assert all(edge.source_id in node_ids and edge.target_id in node_ids for edge in graph.edges)
 
 
-def test_workflow_output_matches_graph() -> None:
-    """Orchestrator workflow output should encode selected plan components."""
+def test_skellycam_workflow_output_matches_plan() -> None:
+    """Workflow output should faithfully encode the selected deterministic plan."""
     orchestrator = Orchestrator(
         capability_detector=DefaultCapabilityDetector(),
         planner=_planner(),
         workflow_builder=GraphWorkflowBuilder(),
     )
 
-    plan, graph = orchestrator.create_workflow(_sources())
+    plan, graph = orchestrator.create_workflow(_skellycam_sources())
 
     graph_model_names = sorted(
         node.config["name"]
