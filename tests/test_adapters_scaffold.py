@@ -8,6 +8,7 @@ from adapters import (
     SkellyCamFrameAdapter,
     URISensorAdapter,
 )
+from adapters.skelly_api_bridge import _decode_binary_payload
 from schemas.capabilities import SensorType
 from schemas.models import Frame, SourceDescriptor
 
@@ -209,3 +210,287 @@ def test_skellycam_frame_adapter_preserves_payload_metadata() -> None:
     assert frame.timestamp_ns == 789
     assert frame.payload["encoding"] == "rgb8"
     assert frame.payload["metadata"] == {"exposure": 0.01, "gain": 2.0}
+
+
+def test_skelly_api_bridge_parses_aligned_little_endian_binary_layout() -> None:
+    """Bridge should parse 24/56/N-JPEG/24 aligned little-endian websocket payloads."""
+    np = pytest.importorskip("numpy")
+
+    payload_header_dtype = np.dtype(
+        [
+            ("message_type", "u1"),
+            ("_pad0", "V7"),
+            ("frame_number", "<i8"),
+            ("number_of_cameras", "<i4"),
+            ("_pad1", "V4"),
+        ],
+        align=True,
+    )
+    frame_header_dtype = np.dtype(
+        [
+            ("message_type", "u1"),
+            ("_pad0", "V7"),
+            ("frame_number", "<i8"),
+            ("camera_id", "S16"),
+            ("camera_index", "<i4"),
+            ("image_width", "<i4"),
+            ("image_height", "<i4"),
+            ("color_channels", "<i4"),
+            ("jpeg_string_length", "<i4"),
+            ("_pad1", "V4"),
+        ],
+        align=True,
+    )
+    payload_footer_dtype = np.dtype(
+        [
+            ("message_type", "u1"),
+            ("_pad0", "V7"),
+            ("frame_number", "<i8"),
+            ("number_of_cameras", "<i4"),
+            ("_pad1", "V4"),
+        ],
+        align=True,
+    )
+
+    header = np.zeros((), dtype=payload_header_dtype)
+    header["message_type"] = 0
+    header["frame_number"] = 42
+    header["number_of_cameras"] = 2
+    header_bytes = header.tobytes()
+
+    jpeg0 = b"\xff\xd8\xff\xdbcam0\xff\xd9"
+    jpeg1 = b"\xff\xd8\xff\xdbcam1-stream\xff\xd9"
+
+    frame0 = np.zeros((), dtype=frame_header_dtype)
+    frame0["message_type"] = 1
+    frame0["frame_number"] = 42
+    frame0["camera_id"] = b"front_rgb\x00"
+    frame0["camera_index"] = 0
+    frame0["image_width"] = 1280
+    frame0["image_height"] = 720
+    frame0["color_channels"] = 3
+    frame0["jpeg_string_length"] = len(jpeg0)
+
+    frame1 = np.zeros((), dtype=frame_header_dtype)
+    frame1["message_type"] = 1
+    frame1["frame_number"] = 42
+    frame1["camera_id"] = b"left_depth\x00"
+    frame1["camera_index"] = 1
+    frame1["image_width"] = 640
+    frame1["image_height"] = 480
+    frame1["color_channels"] = 3
+    frame1["jpeg_string_length"] = len(jpeg1)
+
+    footer = np.zeros((), dtype=payload_footer_dtype)
+    footer["message_type"] = 2
+    footer["frame_number"] = 42
+    footer["number_of_cameras"] = 2
+
+    payload_bytes = b"".join(
+        [
+            header_bytes,
+            frame0.tobytes(),
+            jpeg0,
+            frame1.tobytes(),
+            jpeg1,
+            footer.tobytes(),
+        ]
+    )
+
+    parsed = _decode_binary_payload(payload_bytes)
+
+    assert parsed["frame_id"] == "frame-42"
+    binary_payload = parsed["payload"]
+    assert binary_payload["layout"]["endianness"] == "little"
+    assert binary_payload["layout"]["alignment"] == "numpy.align=True"
+    assert binary_payload["payload_header"]["message_type"] == 0
+    assert binary_payload["payload_header"]["frame_number"] == 42
+    assert binary_payload["payload_header"]["number_of_cameras"] == 2
+
+    cameras = binary_payload["cameras"]
+    assert len(cameras) == 2
+    assert cameras[0]["frame_header"]["message_type"] == 1
+    assert cameras[0]["frame_header"]["frame_number"] == 42
+    assert cameras[0]["frame_header"]["camera_id"] == "front_rgb"
+    assert cameras[0]["frame_header"]["camera_index"] == 0
+    assert cameras[0]["frame_header"]["jpeg_string_length"] == len(jpeg0)
+    assert cameras[0]["jpeg"] == jpeg0
+    assert cameras[1]["frame_header"]["message_type"] == 1
+    assert cameras[1]["frame_header"]["frame_number"] == 42
+    assert cameras[1]["frame_header"]["camera_id"] == "left_depth"
+    assert cameras[1]["frame_header"]["camera_index"] == 1
+    assert cameras[1]["frame_header"]["jpeg_string_length"] == len(jpeg1)
+    assert cameras[1]["jpeg"] == jpeg1
+    assert binary_payload["payload_footer"]["message_type"] == 2
+    assert binary_payload["payload_footer"]["frame_number"] == 42
+    assert binary_payload["payload_footer"]["number_of_cameras"] == 2
+
+
+def test_skelly_api_bridge_rejects_truncated_binary_payload() -> None:
+    """Bridge should reject incomplete binary payloads with clear errors."""
+    np = pytest.importorskip("numpy")
+
+    payload_header_dtype = np.dtype(
+        [
+            ("message_type", "u1"),
+            ("_pad0", "V7"),
+            ("frame_number", "<i8"),
+            ("number_of_cameras", "<i4"),
+            ("_pad1", "V4"),
+        ],
+        align=True,
+    )
+    frame_header_dtype = np.dtype(
+        [
+            ("message_type", "u1"),
+            ("_pad0", "V7"),
+            ("frame_number", "<i8"),
+            ("camera_id", "S16"),
+            ("camera_index", "<i4"),
+            ("image_width", "<i4"),
+            ("image_height", "<i4"),
+            ("color_channels", "<i4"),
+            ("jpeg_string_length", "<i4"),
+            ("_pad1", "V4"),
+        ],
+        align=True,
+    )
+    payload_footer_dtype = np.dtype(
+        [
+            ("message_type", "u1"),
+            ("_pad0", "V7"),
+            ("frame_number", "<i8"),
+            ("number_of_cameras", "<i4"),
+            ("_pad1", "V4"),
+        ],
+        align=True,
+    )
+
+    header = np.zeros((), dtype=payload_header_dtype)
+    header["message_type"] = 0
+    header["frame_number"] = 1
+    header["number_of_cameras"] = 1
+
+    frame = np.zeros((), dtype=frame_header_dtype)
+    frame["message_type"] = 1
+    frame["frame_number"] = 1
+    frame["camera_id"] = b"cam\x00"
+    frame["camera_index"] = 0
+    frame["image_width"] = 640
+    frame["image_height"] = 480
+    frame["color_channels"] = 3
+    frame["jpeg_string_length"] = 10
+
+    footer = np.zeros((), dtype=payload_footer_dtype)
+    footer["message_type"] = 2
+    footer["frame_number"] = 1
+    footer["number_of_cameras"] = 1
+    payload_bytes = b"".join([header.tobytes(), frame.tobytes(), b"\x00\x01", footer.tobytes()])
+
+    with pytest.raises(ValueError, match="JPEG bytes were fully read"):
+        _decode_binary_payload(payload_bytes)
+
+
+def test_skelly_api_bridge_rejects_invalid_payload_header_message_type() -> None:
+    """Bridge should reject binary payloads when header message_type is not PAYLOAD_HEADER."""
+    np = pytest.importorskip("numpy")
+
+    payload_header_dtype = np.dtype(
+        [
+            ("message_type", "u1"),
+            ("_pad0", "V7"),
+            ("frame_number", "<i8"),
+            ("number_of_cameras", "<i4"),
+            ("_pad1", "V4"),
+        ],
+        align=True,
+    )
+    payload_footer_dtype = np.dtype(
+        [
+            ("message_type", "u1"),
+            ("_pad0", "V7"),
+            ("frame_number", "<i8"),
+            ("number_of_cameras", "<i4"),
+            ("_pad1", "V4"),
+        ],
+        align=True,
+    )
+
+    header = np.zeros((), dtype=payload_header_dtype)
+    header["message_type"] = 9
+    header["frame_number"] = 7
+    header["number_of_cameras"] = 0
+
+    footer = np.zeros((), dtype=payload_footer_dtype)
+    footer["message_type"] = 2
+    footer["frame_number"] = 7
+    footer["number_of_cameras"] = 0
+
+    with pytest.raises(ValueError, match="header message_type mismatch"):
+        _decode_binary_payload(header.tobytes() + footer.tobytes())
+
+
+def test_skelly_api_bridge_rejects_invalid_frame_header_message_type() -> None:
+    """Bridge should reject binary payloads with invalid FRAME_HEADER message_type."""
+    np = pytest.importorskip("numpy")
+
+    payload_header_dtype = np.dtype(
+        [
+            ("message_type", "u1"),
+            ("_pad0", "V7"),
+            ("frame_number", "<i8"),
+            ("number_of_cameras", "<i4"),
+            ("_pad1", "V4"),
+        ],
+        align=True,
+    )
+    frame_header_dtype = np.dtype(
+        [
+            ("message_type", "u1"),
+            ("_pad0", "V7"),
+            ("frame_number", "<i8"),
+            ("camera_id", "S16"),
+            ("camera_index", "<i4"),
+            ("image_width", "<i4"),
+            ("image_height", "<i4"),
+            ("color_channels", "<i4"),
+            ("jpeg_string_length", "<i4"),
+            ("_pad1", "V4"),
+        ],
+        align=True,
+    )
+    payload_footer_dtype = np.dtype(
+        [
+            ("message_type", "u1"),
+            ("_pad0", "V7"),
+            ("frame_number", "<i8"),
+            ("number_of_cameras", "<i4"),
+            ("_pad1", "V4"),
+        ],
+        align=True,
+    )
+
+    header = np.zeros((), dtype=payload_header_dtype)
+    header["message_type"] = 0
+    header["frame_number"] = 10
+    header["number_of_cameras"] = 1
+
+    frame = np.zeros((), dtype=frame_header_dtype)
+    frame["message_type"] = 9
+    frame["frame_number"] = 10
+    frame["camera_id"] = b"front_rgb\x00"
+    frame["camera_index"] = 0
+    frame["image_width"] = 1280
+    frame["image_height"] = 720
+    frame["color_channels"] = 3
+    frame["jpeg_string_length"] = 3
+
+    footer = np.zeros((), dtype=payload_footer_dtype)
+    footer["message_type"] = 2
+    footer["frame_number"] = 10
+    footer["number_of_cameras"] = 1
+
+    payload_bytes = b"".join([header.tobytes(), frame.tobytes(), b"abc", footer.tobytes()])
+
+    with pytest.raises(ValueError, match="frame header message_type mismatch"):
+        _decode_binary_payload(payload_bytes)

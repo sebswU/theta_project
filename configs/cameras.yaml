@@ -25,6 +25,16 @@
       "uri": "ros2:///imu/data",
       "transport": "ros2",
       "topic": "/imu/data"
+    },
+    {
+      "id": "websocket_skellycam",
+      "type": "rgb_camera",
+      "adapter": "adapters.skelly_api_bridge_adapter.SkellyApiBridgeAdapter",
+      "uri": "ws://localhost:53117/skellycam/websocket",
+      "transport": "websocket",
+      "supports_calibration": true,
+      "supports_multiview": true,
+      "calibration": "configs/calibration/skellycam.yaml"
     }
   ]
 }

@@ -9,6 +9,7 @@ description = "Universal integration platform scaffold for computer vision ecosy
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+  "numpy>=2.0.0,<3.0.0",
   "pydantic>=2.8.0,<3.0.0",
 ]
 
