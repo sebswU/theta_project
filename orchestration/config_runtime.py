@@ -85,6 +85,7 @@ def load_runtime_assembly(
     detection, deterministic planning, and workflow graph compilation.
     """
 
+    #read through yaml files and load them into dicts
     base_path = Path(config_dir)
     cameras_config = _load_json_yaml(base_path / "cameras.yaml")
     models_config = _load_json_yaml(base_path / "models.yaml")
@@ -97,19 +98,31 @@ def load_runtime_assembly(
     pipelines = pipelines_config["pipelines"]
     pipeline_config = pipelines[pipeline_name]
 
+    # Filter sources to those required by the selected pipeline, if any.
     selected_sources = _filter_sources(sources, pipeline_config.get("inputs", []))
     selected_source_ids = {source.source_id for source in selected_sources}
+
+    # Filter adapter classes and calibration refs to match selected sources.
+    # iterates through source_adapter_classes and keeps only those 
+    # whose source_id is in selected_source_ids
     selected_adapter_classes = {
         source_id: adapter_cls
         for source_id, adapter_cls in source_adapter_classes.items()
         if source_id in selected_source_ids
     }
+
+    # Filter calibration refs to match selected sources.
+    # iterates through source_calibration_refs and keeps only those 
+    # whose source_id is in selected_source_ids
     selected_calibration_refs = {
         source_id: path
         for source_id, path in source_calibration_refs.items()
         if source_id in selected_source_ids
     }
 
+    # Load models and plugins into registries and requirement maps, 
+    # then validate
+    # that the selected pipeline references only enabled components.
     model_registry, model_requirements = _load_models(models_config)
     plugin_registry, plugin_requirements = _load_plugins(plugins_config)
     _validate_pipeline_references(

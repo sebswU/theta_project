@@ -149,7 +149,9 @@ def test_skellycam_runtime_smoke_path() -> None:
     frame = Frame(frame_id="frame-1", timestamp_ns=1, source_id=source.source_id)
 
     assert assembly.pipeline_name == "skellycam_minimal"
-    assert [source.source_id for source in assembly.sources] == ["cam_front_rgb", "websocket_skellycam"]
+    assert [source.source_id for source in assembly.sources] == [
+        "cam_front_rgb", 
+        "websocket_skellycam"]
     assert assembly.plan.selected_models == ["rtmpose"]
     assert assembly.plan.selected_plugins == ["scene_graph"]
 
