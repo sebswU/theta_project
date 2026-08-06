@@ -29,12 +29,12 @@
     {
       "id": "websocket_skellycam",
       "type": "rgb_camera",
-      "adapter": "adapters.skelly_api_bridge_adapter.SkellyApiBridgeAdapter",
+      "adapter": "adapters.skelly_api_bridge.SkellyApiBridgeAdapter",
       "uri": "ws://localhost:53117/skellycam/websocket",
       "transport": "websocket",
       "supports_calibration": true,
       "supports_multiview": true,
-      "calibration": "configs/calibration/skellycam.yaml"
+      "calibration": "configs/calibration/skelly_api_bridge.yaml"
     }
   ]
 }

@@ -199,6 +199,8 @@ def _decode_binary_payload(message: bytes) -> dict[str, Any]:
     if payload_footer_dtype.itemsize != _PAYLOAD_FOOTER_SIZE:
         raise ValueError("Internal payload footer dtype mismatch")
 
+    # parse payload header
+    # cursor is used to track the current read position in the message bytes
     cursor = 0
     payload_header_raw = message[cursor : cursor + _PAYLOAD_HEADER_SIZE]
     payload_header_record = np.frombuffer(
@@ -207,6 +209,7 @@ def _decode_binary_payload(message: bytes) -> dict[str, Any]:
         count=1,
     )[0]
 
+    # validate payload header
     header_message_type = int(payload_header_record["message_type"])
     if header_message_type != _PAYLOAD_HEADER_TYPE:
         raise ValueError(
