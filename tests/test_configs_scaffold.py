@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from adapters import SkellyCamFrameAdapter, URISensorAdapter
+from adapters import SkellyApiBridgeAdapter, SkellyCamFrameAdapter, URISensorAdapter
 from fusion.plugins import SceneGraphPlugin
 from orchestration import load_runtime_assembly
 from registry.cvpr_model import CVPRModel
@@ -31,10 +31,12 @@ def test_config_files_parse_cleanly() -> None:
         "cam_front_rgb",
         "cam_left_depth",
         "imu_base",
+        "websocket_skellycam",
     ]
     assert assembly.outputs == ["scene_graph", "web_dashboard"]
     assert assembly.source_calibration_refs == {
-        "cam_front_rgb": "configs/calibration/front_rgb.yaml"
+        "cam_front_rgb": "configs/calibration/front_rgb.yaml",
+        "websocket_skellycam": "configs/calibration/skelly_api_bridge.yaml",
     }
 
 
@@ -51,6 +53,7 @@ def test_referenced_components_exist() -> None:
     assert assembly.source_adapter_classes["cam_front_rgb"] is SkellyCamFrameAdapter
     assert assembly.source_adapter_classes["cam_left_depth"] is SkellyCamFrameAdapter
     assert assembly.source_adapter_classes["imu_base"] is URISensorAdapter
+    assert assembly.source_adapter_classes["websocket_skellycam"] is SkellyApiBridgeAdapter
 
     model_cls = assembly.model_registry.get("rtmpose")
     assert issubclass(model_cls, CVPRModel)
@@ -81,12 +84,20 @@ def test_minimal_end_to_end_path_assembles_without_manual_edits() -> None:
     assembly = load_runtime_assembly(CONFIG_DIR, pipeline_name="skellycam_minimal")
 
     assert assembly.pipeline_name == "skellycam_minimal"
-    assert [source.source_id for source in assembly.sources] == ["cam_front_rgb"]
+    assert [source.source_id for source in assembly.sources] == [
+        "cam_front_rgb",
+        "websocket_skellycam",
+    ]
     assert assembly.plan.selected_models == ["rtmpose"]
     assert assembly.plan.selected_plugins == ["scene_graph"]
     assert assembly.outputs == ["scene_graph"]
     assert assembly.source_adapter_classes["cam_front_rgb"] is SkellyCamFrameAdapter
+    assert assembly.source_adapter_classes["websocket_skellycam"] is SkellyApiBridgeAdapter
     assert assembly.source_calibration_refs["cam_front_rgb"] == "configs/calibration/front_rgb.yaml"
+    assert (
+        assembly.source_calibration_refs["websocket_skellycam"]
+        == "configs/calibration/skelly_api_bridge.yaml"
+    )
     assert assembly.graph.workflow_id.endswith(assembly.plan.plan_id)
     assert any(node.node_type == "source" for node in assembly.graph.nodes)
     assert any(node.node_type == "model" for node in assembly.graph.nodes)
@@ -138,7 +149,7 @@ def test_skellycam_runtime_smoke_path() -> None:
     frame = Frame(frame_id="frame-1", timestamp_ns=1, source_id=source.source_id)
 
     assert assembly.pipeline_name == "skellycam_minimal"
-    assert [source.source_id for source in assembly.sources] == ["cam_front_rgb"]
+    assert [source.source_id for source in assembly.sources] == ["cam_front_rgb", "websocket_skellycam"]
     assert assembly.plan.selected_models == ["rtmpose"]
     assert assembly.plan.selected_plugins == ["scene_graph"]
 
