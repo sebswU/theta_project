@@ -6,6 +6,8 @@ No algorithmic implementation is provided in this scaffold.
 
 from __future__ import annotations
 
+from typing import Any
+
 from registry.cvpr_model import CVPRModel
 from schemas.capabilities import SensorType
 from schemas.models import (
@@ -82,6 +84,98 @@ class RTMPoseAdapter(_BaseScaffoldModel):
 
     MODEL_NAME = "rtmpose"
     OUTPUT_TYPES = ["poses_2d"]
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._runtime: Any | None = None
+        self._runtime_error: str | None = None
+
+    def _load(self) -> None:
+        from adapters.models.rtmpose_onnx import RTMPoseOnnxConfig, RTMPoseOnnxRuntime
+
+        # Keep defaults deterministic while allowing runtime overrides by env/config later.
+        config = RTMPoseOnnxConfig(
+            onnx_path="registry/rtmpose.onnx",
+            device="cpu",
+            input_size=(192, 256),
+            simcc_split_ratio=2.0,
+            use_mmpose_decode=False,
+        )
+        try:
+            runtime = RTMPoseOnnxRuntime(config)
+            runtime.load()
+            self._runtime = runtime
+            self._runtime_error = None
+        except Exception as exc:
+            # Keep scaffold behavior available for contract tests and minimal runtimes.
+            self._runtime = None
+            self._runtime_error = str(exc)
+
+    def _infer(self, inputs: InferenceRequest) -> InferenceResponse:
+        if self._runtime is None:
+            response = super()._infer(inputs)
+            if self._runtime_error:
+                response.outputs["runtime_unavailable"] = self._runtime_error
+            return response
+
+        has_image_payload = all(
+            any(key in frame.payload for key in ("image", "image_path", "path", "image_bytes"))
+            for frame in inputs.frames
+        )
+        if not has_image_payload:
+            response = super()._infer(inputs)
+            response.outputs["runtime_unavailable"] = "frames do not include image payload"
+            return response
+
+        pose_results: list[dict[str, Any]] = []
+        try:
+            for frame in inputs.frames:
+                image = self._runtime.decode_image_payload(frame.payload)
+                output = self._runtime.infer_image(image)
+                pose_results.append(
+                    {
+                        "frame_id": frame.frame_id,
+                        "source_id": frame.source_id,
+                        "keypoints": output["keypoints"].tolist(),
+                        "scores": output["scores"].tolist(),
+                        "timings_ms": output["timings_ms"],
+                    }
+                )
+        except Exception as exc:
+            response = super()._infer(inputs)
+            response.outputs["runtime_unavailable"] = str(exc)
+            return response
+
+        return InferenceResponse(
+            request_id=inputs.request_id,
+            outputs={
+                "model_name": self.model_name,
+                "poses_2d": pose_results,
+                "frame_count": len(pose_results),
+            },
+        )
+
+    def _get_requirements(self) -> ModelRequirements:
+        return ModelRequirements(
+            model_name=self.model_name,
+            required_sources=list(self.REQUIRED_SOURCES),
+            resources={
+                "dependencies": [
+                    "numpy>=2.0.0",
+                    "opencv-python>=4.8.0",
+                    "onnxruntime>=1.8.1",
+                    {"package_name": "mmpose", "optional": True},
+                ],
+                "artifacts": ["registry/rtmpose.onnx"],
+            },
+            metadata={"adapter_class": self.__class__.__name__, "supports_mmpose_decode": True},
+        )
+
+    def _output_schema(self) -> OutputSchema:
+        return OutputSchema(
+            name="poses_2d",
+            fields=["frame_id", "source_id", "keypoints", "scores", "timings_ms"],
+        )
 
 
 class ViTPoseAdapter(_BaseScaffoldModel):
