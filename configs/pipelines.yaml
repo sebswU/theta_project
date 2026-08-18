@@ -17,6 +17,12 @@
       "models": ["rtmpose"],
       "fusion": ["scene_graph"],
       "outputs": ["scene_graph"]
+    },
+    "skellycam_rtmpose_open3d": {
+      "inputs": ["rgb_camera"],
+      "models": ["rtmpose"],
+      "fusion": ["scene_graph"],
+      "outputs": ["scene_graph", "open3d"]
     }
   }
 }
