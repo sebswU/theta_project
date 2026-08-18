@@ -16,6 +16,8 @@ from schemas.models import (
     ModelCapabilities,
     ModelRequirements,
     OutputSchema,
+    SceneGraph,
+    SceneObject,
 )
 
 
@@ -128,16 +130,61 @@ class RTMPoseAdapter(_BaseScaffoldModel):
             return response
 
         pose_results: list[dict[str, Any]] = []
+        humans: list[SceneObject] = []
+        point_cloud_objects: list[SceneObject] = []
         try:
             for frame in inputs.frames:
                 image = self._runtime.decode_image_payload(frame.payload)
                 output = self._runtime.infer_image(image)
+
+                frame_people: list[dict[str, Any]] = []
+                for person_index, (person_keypoints, person_scores) in enumerate(
+                    zip(output["keypoints"], output["scores"], strict=False)
+                ):
+                    keypoints_2d = person_keypoints.tolist()
+                    scores = person_scores.tolist()
+                    frame_people.append(
+                        {
+                            "person_index": person_index,
+                            "keypoints": keypoints_2d,
+                            "scores": scores,
+                        }
+                    )
+                    humans.append(
+                        SceneObject(
+                            object_id=(
+                                f"{frame.source_id}:{frame.frame_id}:person:{person_index}"
+                            ),
+                            object_type="person",
+                            attributes={
+                                "source_id": frame.source_id,
+                                "frame_id": frame.frame_id,
+                                "person_index": person_index,
+                                "keypoints_2d": keypoints_2d,
+                                "scores": scores,
+                            },
+                        )
+                    )
+
+                points_xyz = self._extract_points_xyz(frame.payload)
+                if points_xyz:
+                    point_cloud_objects.append(
+                        SceneObject(
+                            object_id=f"{frame.source_id}:{frame.frame_id}:point_cloud",
+                            object_type="point_cloud",
+                            attributes={
+                                "source_id": frame.source_id,
+                                "frame_id": frame.frame_id,
+                                "points_xyz": points_xyz,
+                            },
+                        )
+                    )
+
                 pose_results.append(
                     {
                         "frame_id": frame.frame_id,
                         "source_id": frame.source_id,
-                        "keypoints": output["keypoints"].tolist(),
-                        "scores": output["scores"].tolist(),
+                        "people": frame_people,
                         "timings_ms": output["timings_ms"],
                     }
                 )
@@ -152,7 +199,13 @@ class RTMPoseAdapter(_BaseScaffoldModel):
                 "model_name": self.model_name,
                 "poses_2d": pose_results,
                 "frame_count": len(pose_results),
+                "point_cloud_count": len(point_cloud_objects),
             },
+            scene_graph=SceneGraph(
+                scene_id=f"rtmpose:{inputs.request_id}",
+                humans=humans,
+                objects=point_cloud_objects,
+            ),
         )
 
     def _get_requirements(self) -> ModelRequirements:
@@ -164,18 +217,40 @@ class RTMPoseAdapter(_BaseScaffoldModel):
                     "numpy>=2.0.0",
                     "opencv-python>=4.8.0",
                     "onnxruntime>=1.8.1",
-                    {"package_name": "mmpose", "optional": True},
                 ],
                 "artifacts": ["registry/rtmpose.onnx"],
             },
-            metadata={"adapter_class": self.__class__.__name__, "supports_mmpose_decode": True},
+            metadata={"adapter_class": self.__class__.__name__, "supports_mmpose_decode": False},
         )
 
     def _output_schema(self) -> OutputSchema:
         return OutputSchema(
             name="poses_2d",
-            fields=["frame_id", "source_id", "keypoints", "scores", "timings_ms"],
+            fields=["frame_id", "source_id", "people", "timings_ms"],
         )
+
+    @staticmethod
+    def _extract_points_xyz(payload: dict[str, Any]) -> list[list[float]]:
+        """Normalize common point-cloud payload variants into xyz float triplets."""
+        raw_points = payload.get("points_xyz", payload.get("point_cloud"))
+        if raw_points is None:
+            return []
+
+        if hasattr(raw_points, "tolist"):
+            raw_points = raw_points.tolist()
+
+        if not isinstance(raw_points, list):
+            return []
+
+        points_xyz: list[list[float]] = []
+        for point in raw_points:
+            if not isinstance(point, (list, tuple)) or len(point) < 3:
+                continue
+            try:
+                points_xyz.append([float(point[0]), float(point[1]), float(point[2])])
+            except (TypeError, ValueError):
+                continue
+        return points_xyz
 
 
 class ViTPoseAdapter(_BaseScaffoldModel):

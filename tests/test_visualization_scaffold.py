@@ -70,4 +70,34 @@ def test_render_scene_fails_clearly_for_invalid_payload() -> None:
         render_scene({"scene": "missing scene_id"}, backend="open3d")
 
     with pytest.raises(TypeError, match="scene_graph must be"):
-        render_scene("not-a-scene", backend="open3d")
+        render_scene(SceneGraph(scene_id="scene-1"), backend="open3d")
+
+
+def test_open3d_backend_collects_keypoints_and_point_clouds(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Open3D backend should collect geometry payloads without opening a window by default."""
+    monkeypatch.setenv("UCA_OPEN3D_SHOW_WINDOW", "0")
+    scene = SceneGraph(
+        scene_id="scene-open3d-geometry",
+        humans=[
+            SceneObject(
+                object_id="human-1",
+                object_type="person",
+                attributes={"keypoints_2d": [[10.0, 20.0], [30.0, 40.0]]},
+            )
+        ],
+        objects=[
+            SceneObject(
+                object_id="pc-1",
+                object_type="point_cloud",
+                attributes={"points_xyz": [[0.0, 0.0, 0.0], [1.0, 2.0, 3.0]]},
+            )
+        ],
+    )
+
+    result = render_scene(scene, backend="open3d")
+
+    assert result["backend"] == "open3d"
+    assert result["keypoint_clouds"] == 1
+    assert result["point_clouds"] == 1
+    assert result["window_opened"] is False
+    assert "rendered" in result
