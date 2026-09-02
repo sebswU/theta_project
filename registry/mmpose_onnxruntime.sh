@@ -11,13 +11,32 @@ gpu_dir="${ROOT_DIR}/onnxruntime-linux-x64-gpu-${ONNX_GPU_VER}"
 
 if [[ ! -d "${cpu_dir}" ]]; then
     echo "Downloading ONNX Runtime CPU ${ONNX_CPU_VER}..."
-    wget "https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_CPU_VER}/onnxruntime-linux-x64-${ONNX_CPU_VER}.tgz"
+    if [[ ! -x "$(command -v wget)" ]]; then
+        #try curl
+        if [[ ! -x "$(command -v curl)" ]]; then
+            echo "Error: Neither wget nor curl is installed. Please install one of them to proceed."
+            exit 1
+        fi
+
+        curl -fL -o "onnxruntime-linux-x64-${ONNX_CPU_VER}.tgz" "https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_CPU_VER}/onnxruntimelinux-x64-${ONNX_CPU_VER}.tgz"
+    else
+        wget "https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_CPU_VER}/onnxruntime-linux-x64-${ONNX_CPU_VER}.tgz"
+    fi
     tar -zxvf "onnxruntime-linux-x64-${ONNX_CPU_VER}.tgz"
 fi
 
 if [[ ! -d "${gpu_dir}" ]]; then
     echo "Downloading ONNX Runtime GPU ${ONNX_GPU_VER}..."
-    wget "https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_GPU_VER}/onnxruntime-linux-x64-gpu-${ONNX_GPU_VER}.tgz"
+    if [[ ! -x "$(command -v wget)" ]]; then
+        #try curl
+        if [[ ! -x "$(command -v curl)" ]]; then
+            echo "Error: Neither wget nor curl is installed. Please install one of them to proceed."
+            exit 1
+        fi
+        curl -fL -o "onnxruntime-linux-x64-${ONNX_GPU_VER}.tgz" "https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_GPU_VER}/onnxruntime-linux-x64-gpu-${ONNX_GPU_VER}.tgz"
+   else
+        wget "https://github.com/microsoft/onnxruntime/releases/download/v${ONNX_GPU_VER}/onnxruntime-linux-x64-gpu-${ONNX_GPU_VER}.tgz"
+    fi
     tar -zxvf "onnxruntime-linux-x64-gpu-${ONNX_GPU_VER}.tgz"
 fi
 
