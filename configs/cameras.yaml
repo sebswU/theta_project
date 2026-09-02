@@ -1,24 +1,6 @@
 {
   "sources": [
     {
-      "id": "cam_front_rgb",
-      "type": "rgb_camera",
-      "adapter": "adapters.skellycam_frame_adapter.SkellyCamFrameAdapter",
-      "uri": "usb://front-rgb",
-      "transport": "usb",
-      "supports_calibration": true,
-      "supports_multiview": true,
-      "calibration": "configs/calibration/front_rgb.yaml"
-    },
-    {
-      "id": "cam_left_depth",
-      "type": "depth_camera",
-      "adapter": "adapters.skellycam_frame_adapter.SkellyCamFrameAdapter",
-      "uri": "rtsp://example.local/left_depth",
-      "transport": "rtsp",
-      "supports_synchronization": true
-    },
-    {
       "id": "imu_base",
       "type": "imu",
       "adapter": "adapters.uri_sensor_adapter.URISensorAdapter",
@@ -30,7 +12,7 @@
       "id": "websocket_skellycam",
       "type": "rgb_camera",
       "adapter": "adapters.skelly_api_bridge.SkellyApiBridgeAdapter",
-      "uri": "ws://localhost:53117/skellycam/websocket",
+      "uri": "ws://localhost:53117/skellycam/websocket/connect",
       "transport": "websocket",
       "supports_calibration": true,
       "supports_multiview": true,

@@ -330,7 +330,7 @@ def _decode_binary_payload(message: bytes) -> dict[str, Any]:
                 "frame_number": frame_number,
                 "number_of_cameras": camera_count,
             },
-            "cameras": cameras, # jpeg bytes stored in each camera dict
+            "cameras": cameras, # jpeg bytes stored here in each camera dict
             "payload_footer": {
                 "message_type": footer_message_type,
                 "frame_number": footer_frame_number,
