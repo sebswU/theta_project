@@ -9,3 +9,5 @@ htmlcov/
 .venv/
 .env
 .vscode/
+onnxruntime*/
+onnxruntime-linux-x64-*.tgz
